@@ -8,7 +8,12 @@
 #ifndef  __SPECTRUM_H__
 #define __SPECTRUM_H__
 
+#include "pcre.h"
+
 #define Malloc malloc
+#define Free free
+#define OVECCOUNT 50
+
 enum var_type{
     VAR_TYPE_STR=0,
     VAR_TYPE_NUM,
@@ -55,16 +60,10 @@ struct record{
     struct item_string *string_tail;
 };
 
-struct format_var{
-    struct string name;
-    int type;
-    char endflag;
-    int space;
-};
 
 struct format{
     int start_skip;
-    struct format_var vars[];
+    pcre *re;
 };
 
 

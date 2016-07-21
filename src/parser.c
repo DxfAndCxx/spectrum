@@ -12,6 +12,7 @@
 #include <malloc.h>
 
 #include "spectrum.h"
+#include "sws.h"
 
 struct record *record_new()
 {
@@ -33,23 +34,26 @@ struct record *record_new()
 
 void *record_append(struct record *record, enum var_type type, unsigned int size)
 {
-    void *var;
     if (VAR_TYPE_STR == type)
     {
-         var = Malloc(sizeof(struct item_string));
-         if (NULL == record->string)
-         {
-             record->string = var;
-         }
-         else{
-             record->string_tail->next = var;
-         }
-         record->string_tail = var;
-         return var;
+        struct item_string *var;
+        var = Malloc(sizeof(struct item_string));
+        if (NULL == record->string)
+        {
+            record->string = var;
+        }
+        else{
+            record->string_tail->next = var;
+        }
+
+        record->string_tail = var;
+        var->next = NULL;
+        return var;
     }
 
     if (VAR_TYPE_NUM == type)
     {
+        struct item_number *var;
          var = Malloc(sizeof(struct item_number));
          if (NULL == record->number)
          {
@@ -59,11 +63,13 @@ void *record_append(struct record *record, enum var_type type, unsigned int size
              record->number_tail->next = var;
          }
          record->number_tail = var;
+        var->next = NULL;
          return var;
     }
 
     if (VAR_TYPE_NUM_ARRAY == type)
     {
+        struct item_array *var;
          var = Malloc(sizeof(struct item_array) + sizeof(struct number) * size);
          if (NULL == record->array)
          {
@@ -73,74 +79,65 @@ void *record_append(struct record *record, enum var_type type, unsigned int size
              record->array_tail->next = var;
          }
          record->array_tail = var;
+        var->next = NULL;
          return var;
     }
+    return NULL;
 }
 
-static const char * skip_varname(const char *c)
-{
-    while(*c)
-    {
-        ++c;
-        if (*c >= 'a' && *c <= 'z') continue;
-        if (*c >= 'A' && *c <= 'Z') continue;
-        if (*c == '_') continue;
 
-        return c;
+struct record *record_read(const char *src, size_t len, struct format *fmt)
+{
+    int ovector[OVECCOUNT * 2];
+    int rc, i;
+    struct item_string *item;
+    struct record *record;
+
+    rc = pcre_exec(fmt->re,            // code, 输入参数，用pcre_compile编译好的正则表达结构的指针
+            NULL,          // extra, 输入参数，用来向pcre_exec传一些额外的数据信息的结构的指针
+            src,           // subject, 输入参数，要被用来匹配的字符串
+            len,  // length, 输入参数， 要被用来匹配的字符串的指针
+            0,             // startoffset, 输入参数，用来指定subject从什么位置开始被匹配的偏移量
+            0,             // options, 输入参数， 用来指定匹配过程中的一些选项
+            ovector,       // ovector, 输出参数，用来返回匹配位置偏移量的数组
+            OVECCOUNT);    // ovecsize, 输入参数， 用来返回匹配位置偏移量的数组的最大大小
+    // 返回值：匹配成功返回非负数，没有匹配返回负数
+    if (rc < 0) {                     //如果没有匹配，返回错误信息
+        if (rc == PCRE_ERROR_NOMATCH) printf("Sorry, no match ...\n");
+        else
+            printf("Matching error %d\n", rc);
+        return NULL;
     }
-    return c;
+
+    record = record_new();
+    for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
+        item = record_append(record, VAR_TYPE_STR, 0);
+        item->s.s = (char *)src + ovector[2*i];
+        item->s.l = ovector[2*i+1] - ovector[2*i];
+    }
+    return record;
 }
 
-struct format *compile(const char *fmt)
+
+struct format *compile(const char *pattern)
 {
-    const char *c;
     struct format *format;
+    const char *error;
+    int erroffset;
+    format = Malloc(sizeof *format);
 
-    int count = 0;
-    int size;
+    format->re = pcre_compile(pattern,       // pattern, 输入参数，将要被编译的字符串形式的正则表达式
+                      0,            // options, 输入参数，用来指定编译时的一些选项
+                      &error,       // errptr, 输出参数，用来输出错误信息
+                      &erroffset,   // erroffset, 输出参数，pattern中出错位置的偏移量
+                      NULL);        // tableptr, 输入参数，用来指定字符表，一般情况用NULL
 
-    c = fmt;
-    while(*c)
-    {
-        if (*c == '$') ++count;
-        ++c;
+    // 返回值：被编译好的正则表达式的pcre内部表示结构
+    if (error) {                 //如果编译失败，返回错误信息
+        printf("PCRE compilation failed at offset %d: %s\n", erroffset, error);
+        free(format);
+        return NULL;
     }
-
-
-
-    size = sizeof(*format) + sizeof(struct format_var) * count + 1;
-    format = malloc(size);
-    memset(format, 0, size);
-
-
-    c = fmt;
-    count = 0;
-    while (*c)
-    {
-        if (*c == '$')
-        {
-            if (0 == count)
-                format->start_skip = c - fmt;
-            else
-                format->vars[count - 1].space = c - format->vars[count - 1].name.s - format->vars[count - 1].name.l;
-
-            format->vars[count].name.s = (char *)c + 1;
-            c = skip_varname(c);
-
-            format->vars[count].name.l = c - format->vars[count].name.s;
-            format->vars[count].type = VAR_TYPE_STR;
-
-            if (*c)
-                format->vars[count].endflag = *c;
-            else
-                format->vars[count].endflag = '\n';
-
-            ++count;
-            continue;
-        }
-        ++c;
-    }
-
     return format;
 
 }
@@ -150,36 +147,40 @@ struct format *compile(const char *fmt)
 int main()
 {
     struct format *fmt;
-    struct format_var *var;
 
-    const char *ngx_log = "'$remote_addr - $remote_user [$time_local] '"
-    "'\"$request_method $scheme://$http_host$request_uri $server_protocol\" '"
-    "'$status $body_bytes_sent \"$http_referer\" \"$http_user_agent\" '"
-    "'\"$sent_http_content_type\" $domain_type $http_x_request_id $request_time '"
-    "'\"$upstream_http_cache_control\" \"$upstream_http_x_source\" '"
-    "'\"$cache_status\" \"$upstats_dynamic\" \"$upstream_addr\" \"$upstream_status\" '"
-    "'\"$upstream_response_time\" \"$upstream_response_length\" $upstream_http_age '"
-    "'$uptype $upage \"$sent_http_via\" $first_byte_time '"
-    "'\"$upstream_http_x_slice_size\"'";
+    struct sws_filebuf *pattern_buf;
+    struct sws_filebuf *log_buf;
 
-    fmt = compile(ngx_log);
+    struct record *record;
 
-    printf("format start_skip: %d\n", fmt->start_skip);
-    var = fmt->vars;
+    pattern_buf = sws_fileread("t/pattern");
+    pattern_buf->buf[pattern_buf->size - 1] = 0;
+    log_buf = sws_fileread("t/ngx_logs");
 
-    while(var->name.s)
+
+
+
+
+    fmt = compile(pattern_buf->buf);
+    if (!fmt)
     {
-        printf("var: %-30.*s endswith: [%c] type: %d space: %d\n",
-                var->name.l, var->name.s, var->endflag,
-                var->type, var->space
-                );
-        ++var;
-
+        printf("print fmt compile fail\n");
+        return -1;
     }
 
+    record = record_read(log_buf->buf, log_buf->size, fmt);
 
+    if (!record)
+        return -1;
 
+    struct item_string *v;
 
+    v = record->string;
+    while (v)
+    {
+        printf("%.*s\n", v->s.l, v->s.s);
+        v = v->next;
+    }
 }
 #endif
 
