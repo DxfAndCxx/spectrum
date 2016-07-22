@@ -27,6 +27,8 @@ struct record *record_new()
     record->string = NULL;
     record->string_tail = NULL;
 
+    record->next = NULL;
+
     return record;
 }
 
@@ -85,7 +87,7 @@ void *record_append(struct record *record, enum var_type type, unsigned int size
 }
 
 
-struct record *record_read(const char *src, size_t len, struct format *fmt)
+struct record *record_read(struct format *fmt, const char *src, size_t len)
 {
     int ovector[OVECCOUNT * 3];
     int rc, i;
@@ -115,7 +117,35 @@ struct record *record_read(const char *src, size_t len, struct format *fmt)
         item->s.s = (char *)src + ovector[2*i];
         item->s.l = ovector[2*i+1] - ovector[2*i];
     }
+
+    if (fmt->record)
+    {
+        fmt->record_tail->next = record;
+        fmt->record_tail = record;
+    }
+    else{
+        fmt->record_tail = fmt->record = record;
+    }
     return record;
+}
+
+int records_read(struct format *fmt, const char *src, size_t len)
+{
+    const char *s, *e;
+
+    s = e = src;
+
+    while (e - src < len)
+    {
+        if ('\n' == *e)
+        {
+            record_read(fmt, s, e - s);
+            s = e + 1;
+        }
+        ++e;
+    }
+
+    return 0;
 }
 
 struct pattern_line{
@@ -238,6 +268,8 @@ struct format *compile(const char *path)
     int erroffset;
 
     format = Malloc(sizeof *format);
+    memset(format, 0, sizeof *format);
+
     format->raw_pattern = sws_fileread(path);
 
     read_pattern(format);
@@ -267,6 +299,7 @@ int main()
     struct format *fmt;
     struct sws_filebuf *log_buf;
     struct record *record;
+    struct item_string *v;
 
     log_buf = sws_fileread("t/ngx_logs");
 
@@ -277,19 +310,33 @@ int main()
         return -1;
     }
 
-    record = record_read(log_buf->buf, log_buf->size, fmt);
+    records_read(fmt, log_buf->buf, log_buf->size);
+
+    record = fmt->record;
+
+
+    while (record)
+    {
+        v = record->string;
+        printf("==================================\n");
+        while (v)
+        {
+
+            printf("%-15.*s: %.*s\n", v->name->l, v->name->s, v->s.l, v->s.s);
+            v = v->next;
+        }
+        record = record->next;
+    }
+
+
 
     if (!record)
         return -1;
 
-    struct item_string *v;
 
-    v = record->string;
-    while (v)
-    {
-        printf("%-15.*s: %.*s\n", v->name->l, v->name->s, v->s.l, v->s.s);
-        v = v->next;
-    }
+
+
+
 }
 #endif
 

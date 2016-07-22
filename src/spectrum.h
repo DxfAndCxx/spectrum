@@ -64,6 +64,8 @@ struct record{
 
     struct item_string *string;
     struct item_string *string_tail;
+
+    struct record *next;
 };
 
 
@@ -72,7 +74,9 @@ struct format{
     char *pattern;
     struct string *names;
 
-    int start_skip;
+    struct record *record;
+    struct record *record_tail;
+
     pcre *re;
 };
 
