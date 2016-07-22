@@ -12,7 +12,6 @@
 #include <malloc.h>
 
 #include "spectrum.h"
-#include "sws.h"
 
 struct record *record_new()
 {
@@ -88,7 +87,7 @@ void *record_append(struct record *record, enum var_type type, unsigned int size
 
 struct record *record_read(const char *src, size_t len, struct format *fmt)
 {
-    int ovector[OVECCOUNT * 2];
+    int ovector[OVECCOUNT * 3];
     int rc, i;
     struct item_string *item;
     struct record *record;
@@ -108,25 +107,145 @@ struct record *record_read(const char *src, size_t len, struct format *fmt)
             printf("Matching error %d\n", rc);
         return NULL;
     }
+    printf("###########%d\n", rc);
 
     record = record_new();
     for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
         item = record_append(record, VAR_TYPE_STR, 0);
+        item->name = fmt->names + i - 1;
         item->s.s = (char *)src + ovector[2*i];
         item->s.l = ovector[2*i+1] - ovector[2*i];
     }
     return record;
 }
 
+struct pattern_line{
+    const char *name;
+    size_t name_len;
 
-struct format *compile(const char *pattern)
+    const char *pattern;
+    size_t pattern_len;
+
+    const char *end;
+};
+
+
+static int read_one_pattern(struct pattern_line *line, const char *l)
+{
+    const char *split;
+    const char *s;
+
+    s = l;
+    while (*s != '\n' && *s != 0) ++s;
+    line->end = s;
+
+    split = l;
+    while (*split != ':' && split < line->end) ++split;
+    if (':' != *split) return -1; // not found :
+
+    if (line->end - split < 2)
+        return -2; // pattern is empty
+
+    line->pattern = split + 1;
+    line->pattern_len = s - split - 1;
+
+    line->name = NULL;
+
+    s = l;
+    while (s < split)
+    {
+        if (!line->name)
+        {
+            if (*s != ' ' && *s != '\t')
+            {
+                line->name = s;
+                line->name_len = split - line->name;
+            }
+        }
+        else{
+            if (*s == ' ' || *s == '\t')
+            {
+                line->name_len = s - line->name;
+                break;
+            }
+        }
+        ++s;
+    }
+
+    return 0;// OK
+}
+
+
+
+static int read_pattern(struct format *format)
+{
+    const char *start;
+    char *pos;
+    int name_index;
+    struct pattern_line pl;
+    int line_number = 0;
+    int res;
+
+    int count = 2;
+    start = format->raw_pattern->buf;
+    while (*start)
+    {
+        if ('\n' == *start) ++count;
+        ++start;
+    }
+
+    format->pattern = Malloc(format->raw_pattern->size);
+    format->names =  Malloc(sizeof(struct string) * count);
+    memset(format->pattern, 0, format->raw_pattern->size);
+    memset(format->names, 0, sizeof(struct string) * count);
+    name_index = 0;
+
+    start = format->raw_pattern->buf;
+    pos = format->pattern;
+
+
+    while (*start)
+    {
+        res = read_one_pattern(&pl, start);
+        if (res < 0)
+            goto end;
+
+        if (pl.name) *pos++ = '(';
+
+        memcpy((void *)pos, pl.pattern, pl.pattern_len);
+        pos += pl.pattern_len;
+
+        if (pl.name)
+        {
+            *pos++ = ')';
+
+            format->names[name_index].l = pl.name_len;
+            format->names[name_index].s = (char *)pl.name;
+            ++name_index;
+        }
+end:
+        if (0 == *pl.end) break;
+        start = pl.end + 1;
+        ++line_number;
+    }
+    return 0;
+}
+
+
+struct format *compile(const char *path)
 {
     struct format *format;
     const char *error;
     int erroffset;
-    format = Malloc(sizeof *format);
 
-    format->re = pcre_compile(pattern,       // pattern, 输入参数，将要被编译的字符串形式的正则表达式
+    format = Malloc(sizeof *format);
+    format->raw_pattern = sws_fileread(path);
+
+    read_pattern(format);
+
+    printf("Pattern: /%s/\n", format->pattern);
+
+    format->re = pcre_compile(format->pattern,       // pattern, 输入参数，将要被编译的字符串形式的正则表达式
                       0,            // options, 输入参数，用来指定编译时的一些选项
                       &error,       // errptr, 输出参数，用来输出错误信息
                       &erroffset,   // erroffset, 输出参数，pattern中出错位置的偏移量
@@ -147,21 +266,12 @@ struct format *compile(const char *pattern)
 int main()
 {
     struct format *fmt;
-
-    struct sws_filebuf *pattern_buf;
     struct sws_filebuf *log_buf;
-
     struct record *record;
 
-    pattern_buf = sws_fileread("t/pattern");
-    pattern_buf->buf[pattern_buf->size - 1] = 0;
     log_buf = sws_fileread("t/ngx_logs");
 
-
-
-
-
-    fmt = compile(pattern_buf->buf);
+    fmt = compile("t/pattern");
     if (!fmt)
     {
         printf("print fmt compile fail\n");
@@ -178,7 +288,7 @@ int main()
     v = record->string;
     while (v)
     {
-        printf("%.*s\n", v->s.l, v->s.s);
+        printf("%-15.*s: %.*s\n", v->name->l, v->name->s, v->s.l, v->s.s);
         v = v->next;
     }
 }

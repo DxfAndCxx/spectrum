@@ -31,6 +31,7 @@ struct sws_filebuf *sws_fileread(const char *path)
     buf = malloc(st.st_size + sizeof(struct sws_filebuf) + 2);
 
     buf->size = read(f, buf->buf, st.st_size);
+    buf->buf[buf->size] = 0;
 
     return buf;
 }

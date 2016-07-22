@@ -9,6 +9,7 @@
 #define __SPECTRUM_H__
 
 #include "pcre.h"
+#include "sws.h"
 
 #define Malloc malloc
 #define Free free
@@ -30,19 +31,24 @@ struct number{
     float n;
 };
 
-
+typedef struct string string_t;
+typedef struct number number_t;
 
 struct item_string{
+    struct string *name;
     struct string s;
     struct item_string *next;
 };
 
+
 struct item_number{
+    struct string *name;
     struct number n;
     struct item_number *next;
 };
 
 struct item_array{
+    struct string *name;
     struct item_array *next;
     unsigned short size;
     struct number n[];
@@ -62,11 +68,19 @@ struct record{
 
 
 struct format{
+    struct sws_filebuf *raw_pattern;
+    char *pattern;
+    struct string *names;
+
     int start_skip;
     pcre *re;
 };
 
 
+
 #endif
+
+
+
 
 
