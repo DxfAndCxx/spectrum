@@ -11,6 +11,10 @@
 #include "pcre.h"
 #include "sws.h"
 
+#include "lua.h"
+#include "lauxlib.h"
+#include "lualib.h"
+
 #define Malloc malloc
 #define Free free
 #define OVECCOUNT 50
@@ -76,6 +80,8 @@ struct spectrum{
 
     struct record *record;
     struct record *record_tail;
+
+    lua_State *L;
 
     pcre *re;
 };

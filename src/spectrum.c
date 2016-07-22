@@ -28,6 +28,11 @@ int main()
         return -1;
     }
 
+    sp->L = luaL_newstate();
+
+    luaL_openlibs(sp->L);
+    luaL_dofile(sp->L, "spectrum.lua");
+
     record_reads(sp, log_buf->buf, log_buf->size);
 
     record = sp->record;

@@ -1,8 +1,14 @@
-CFLAGS= -g -I sws -lpcre -lsws -L sws -DTEST
-objects=src/complie.o src/record.o
+LUAFLAGS= -lm -ldl
+CFLAGS= -g -I sws -I luajit/src/ -lpcre -lsws -L sws $(LUAFLAGS)
+objects=src/complie.o src/record.o src/spectrum.o
 target=spectrum
+lua=luajit/src/libluajit.a
 
-all:$(objects)
-	gcc $(objects) -o $(target) $(CFLAGS)
+all:$(objects) $(lua)
+	gcc -o $(target) $(objects) $(lua) $(CFLAGS)
+
+
+$(lua):
+	make -C luajit
 
 

@@ -115,7 +115,9 @@ struct record *record_read(struct spectrum *sp, const char *src, size_t len)
         item->s.l = ovector[2*i+1] - ovector[2*i];
     }
 
-
+    lua_pushlightuserdata(sp->L, record);
+    lua_getglobal(sp->L, "spectrum_record");
+    lua_pcall(sp->L, 0, 0, 0);
 
     if (sp->record)
     {
