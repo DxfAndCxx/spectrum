@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <sys/time.h>
+
 #include "spectrum.h"
 
 int main()
@@ -17,7 +19,9 @@ int main()
     struct spectrum *sp;
     struct sws_filebuf *log_buf;
     struct record *record;
-    struct item_string *v;
+    struct timeval time_start, time_end;
+
+    gettimeofday(&time_start, NULL);
 
     log_buf = sws_fileread("t/ngx_logs");
 
@@ -44,17 +48,13 @@ int main()
 
     record = sp->record;
 
+    gettimeofday(&time_end, NULL);
+    printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
+    printf("TimeSpace: %lds %ldms %ldmi\n", time_end.tv_sec - time_start.tv_sec,
+            (time_end.tv_usec - time_start.tv_usec)/1000,
+            (time_end.tv_usec - time_start.tv_usec)%1000
+            );
 
-//    while (record)
-//    {
-//        v = record->string;
-//        printf("==================================\n");
-//        while (v)
-//        {
-//
-//            printf("%-15.*s: %.*s\n", v->name->l, v->name->s, v->s.l, v->s.s);
-//            v = v->next;
-//        }
-//        record = record->next;
-//    }
+
+
 }
