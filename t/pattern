@@ -10,6 +10,7 @@ status          :\d+
 body_bytes_sent  :\d+
                  :[ ]"[^"]+"\s"[^"]+"\s"[^"]+" \w+[ ]
 x_request_id     :\w+
-request_time: [\.\d]+
+                 :[ ]
+request_time     :[\.\d]+
 
 

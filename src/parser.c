@@ -107,7 +107,6 @@ struct record *record_read(const char *src, size_t len, struct format *fmt)
             printf("Matching error %d\n", rc);
         return NULL;
     }
-    printf("###########%d\n", rc);
 
     record = record_new();
     for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
