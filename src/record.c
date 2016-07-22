@@ -84,14 +84,14 @@ static void *record_append(struct record *record, enum var_type type, unsigned i
     return NULL;
 }
 
-struct record *record_read(struct format *fmt, const char *src, size_t len)
+struct record *record_read(struct spectrum *sp, const char *src, size_t len)
 {
     int ovector[OVECCOUNT * 3];
     int rc, i;
     struct item_string *item;
     struct record *record;
 
-    rc = pcre_exec(fmt->re,            // code, 输入参数，用pcre_compile编译好的正则表达结构的指针
+    rc = pcre_exec(sp->re,            // code, 输入参数，用pcre_compile编译好的正则表达结构的指针
             NULL,          // extra, 输入参数，用来向pcre_exec传一些额外的数据信息的结构的指针
             src,           // subject, 输入参数，要被用来匹配的字符串
             len,  // length, 输入参数， 要被用来匹配的字符串的指针
@@ -110,23 +110,25 @@ struct record *record_read(struct format *fmt, const char *src, size_t len)
     record = record_new();
     for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
         item = record_append(record, VAR_TYPE_STR, 0);
-        item->name = fmt->names + i - 1;
+        item->name = sp->names + i - 1;
         item->s.s = (char *)src + ovector[2*i];
         item->s.l = ovector[2*i+1] - ovector[2*i];
     }
 
-    if (fmt->record)
+
+
+    if (sp->record)
     {
-        fmt->record_tail->next = record;
-        fmt->record_tail = record;
+        sp->record_tail->next = record;
+        sp->record_tail = record;
     }
     else{
-        fmt->record_tail = fmt->record = record;
+        sp->record_tail = sp->record = record;
     }
     return record;
 }
 
-int record_reads(struct format *fmt, const char *src, size_t len)
+int record_reads(struct spectrum *sp, const char *src, size_t len)
 {
     const char *s, *e;
 
@@ -136,7 +138,7 @@ int record_reads(struct format *fmt, const char *src, size_t len)
     {
         if ('\n' == *e)
         {
-            record_read(fmt, s, e - s);
+            record_read(sp, s, e - s);
             s = e + 1;
         }
         ++e;

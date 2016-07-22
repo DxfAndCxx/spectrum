@@ -72,7 +72,7 @@ static int read_one_pattern(struct pattern_line *line, const char *l)
 
 
 
-static int read_pattern(struct format *format)
+static int read_pattern(struct spectrum *spectrum)
 {
     const char *start;
     char *pos;
@@ -82,21 +82,21 @@ static int read_pattern(struct format *format)
     int res;
 
     int count = 2;
-    start = format->raw_pattern->buf;
+    start = spectrum->raw_pattern->buf;
     while (*start)
     {
         if ('\n' == *start) ++count;
         ++start;
     }
 
-    format->pattern = Malloc(format->raw_pattern->size);
-    format->names =  Malloc(sizeof(struct string) * count);
-    memset(format->pattern, 0, format->raw_pattern->size);
-    memset(format->names, 0, sizeof(struct string) * count);
+    spectrum->pattern = Malloc(spectrum->raw_pattern->size);
+    spectrum->names =  Malloc(sizeof(struct string) * count);
+    memset(spectrum->pattern, 0, spectrum->raw_pattern->size);
+    memset(spectrum->names, 0, sizeof(struct string) * count);
     name_index = 0;
 
-    start = format->raw_pattern->buf;
-    pos = format->pattern;
+    start = spectrum->raw_pattern->buf;
+    pos = spectrum->pattern;
 
 
     while (*start)
@@ -114,8 +114,8 @@ static int read_pattern(struct format *format)
         {
             *pos++ = ')';
 
-            format->names[name_index].l = pl.name_len;
-            format->names[name_index].s = (char *)pl.name;
+            spectrum->names[name_index].l = pl.name_len;
+            spectrum->names[name_index].s = (char *)pl.name;
             ++name_index;
         }
 end:
@@ -127,22 +127,22 @@ end:
 }
 
 
-struct format *compile(const char *path)
+struct spectrum *compile(const char *path)
 {
-    struct format *format;
+    struct spectrum *spectrum;
     const char *error;
     int erroffset;
 
-    format = Malloc(sizeof *format);
-    memset(format, 0, sizeof *format);
+    spectrum = Malloc(sizeof *spectrum);
+    memset(spectrum, 0, sizeof *spectrum);
 
-    format->raw_pattern = sws_fileread(path);
+    spectrum->raw_pattern = sws_fileread(path);
 
-    read_pattern(format);
+    read_pattern(spectrum);
 
-    printf("Pattern: /%s/\n", format->pattern);
+    printf("Pattern: /%s/\n", spectrum->pattern);
 
-    format->re = pcre_compile(format->pattern,       // pattern, 输入参数，将要被编译的字符串形式的正则表达式
+    spectrum->re = pcre_compile(spectrum->pattern,       // pattern, 输入参数，将要被编译的字符串形式的正则表达式
                       0,            // options, 输入参数，用来指定编译时的一些选项
                       &error,       // errptr, 输出参数，用来输出错误信息
                       &erroffset,   // erroffset, 输出参数，pattern中出错位置的偏移量
@@ -151,10 +151,10 @@ struct format *compile(const char *path)
     // 返回值：被编译好的正则表达式的pcre内部表示结构
     if (error) {                 //如果编译失败，返回错误信息
         printf("PCRE compilation failed at offset %d: %s\n", erroffset, error);
-        free(format);
+        free(spectrum);
         return NULL;
     }
-    return format;
+    return spectrum;
 
 }
 
@@ -162,23 +162,23 @@ struct format *compile(const char *path)
 #if TEST
 int main()
 {
-    struct format *fmt;
+    struct spectrum *sp;
     struct sws_filebuf *log_buf;
     struct record *record;
     struct item_string *v;
 
     log_buf = sws_fileread("t/ngx_logs");
 
-    fmt = compile("t/pattern");
-    if (!fmt)
+    sp = compile("t/pattern");
+    if (!sp)
     {
-        printf("print fmt compile fail\n");
+        printf("print sp compile fail\n");
         return -1;
     }
 
-    record_reads(fmt, log_buf->buf, log_buf->size);
+    record_reads(sp, log_buf->buf, log_buf->size);
 
-    record = fmt->record;
+    record = sp->record;
 
 
     while (record)

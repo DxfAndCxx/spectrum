@@ -69,7 +69,7 @@ struct record{
 };
 
 
-struct format{
+struct spectrum{
     struct sws_filebuf *raw_pattern;
     char *pattern;
     struct string *names;
@@ -81,7 +81,8 @@ struct format{
 };
 
 
-int record_reads(struct format *fmt, const char *src, size_t len);
+int record_reads(struct spectrum *sp, const char *src, size_t len);
+struct spectrum *compile(const char *path);
 
 #endif
 
