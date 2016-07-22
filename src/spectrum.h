@@ -28,7 +28,7 @@ enum var_type{
 
 struct string{
     char *s;
-    unsigned int l;
+    size_t l;
 };
 
 struct number{
@@ -38,16 +38,19 @@ struct number{
 typedef struct string string_t;
 typedef struct number number_t;
 
-struct item_string{
+struct item{
     struct string *name;
-    struct string s;
-    struct item_string *next;
+    union {
+        struct string s;
+        struct number n;
+    }v;
+    enum var_type type;
+    struct item *next;
 };
 
 
 struct item_number{
     struct string *name;
-    struct number n;
     struct item_number *next;
 };
 
@@ -60,14 +63,17 @@ struct item_array{
 
 
 struct record{
-    struct item_array *array;
-    struct item_array *array_tail;
+//struct item_array *array;
+//    struct item_array *array_tail;
+//
+//    struct item_number *number;
+//    struct item_number *number_tail;
+//
+//    struct item_string *string;
+//    struct item_string *string_tail;
 
-    struct item_number *number;
-    struct item_number *number_tail;
-
-    struct item_string *string;
-    struct item_string *string_tail;
+    struct item *vars;
+    struct item *vars_tail;
 
     struct record *next;
 };
@@ -88,6 +94,7 @@ struct spectrum{
 
 
 int record_reads(struct spectrum *sp, const char *src, size_t len);
+int record_lua_init(lua_State *L);
 struct spectrum *compile(const char *path);
 
 #endif

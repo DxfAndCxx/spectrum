@@ -7,5 +7,6 @@
 --
 
 function spectrum_record()
-    print("spectrum_record")
+    local time = sp.record.time;
+    print("time: ", time)
 end

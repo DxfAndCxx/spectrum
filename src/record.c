@@ -10,85 +10,70 @@
 #include <unistd.h>
 #include <string.h>
 #include "spectrum.h"
+static inline void record_lua_record_set(lua_State *L, struct record *record);
+static inline struct record *record_lua_record_get(lua_State *L);
 
 static struct record *record_new()
 {
     struct record *record;
     record = Malloc(sizeof(*record));
 
-    record->array = NULL;
-    record->array_tail = NULL;
+    //record->array = NULL;
+    //record->array_tail = NULL;
 
-    record->number = NULL;
-    record->number_tail = NULL;
+    //record->number = NULL;
+    //record->number_tail = NULL;
 
-    record->string = NULL;
-    record->string_tail = NULL;
+    //record->string = NULL;
+    //record->string_tail = NULL;
 
     record->next = NULL;
+    record->vars = record->vars_tail = NULL;
 
     return record;
 }
 
 
+static struct item *record_vars_get(struct record *record, string_t *s)
+{
+    struct item *item;
+    item = record->vars;
+    while(item)
+    {
+        if ((item->name->l == s->l) && (0 == strncmp(item->name->s, s->s, s->l)))
+            return item;
+        item = item->next;
+    }
+
+    return NULL;
+}
+
+
 static void *record_append(struct record *record, enum var_type type, unsigned int size)
 {
-    if (VAR_TYPE_STR == type)
+    struct item *var;
+    var = Malloc(sizeof(*var));
+    if (NULL == record->vars)
     {
-        struct item_string *var;
-        var = Malloc(sizeof(struct item_string));
-        if (NULL == record->string)
-        {
-            record->string = var;
-        }
-        else{
-            record->string_tail->next = var;
-        }
-
-        record->string_tail = var;
-        var->next = NULL;
-        return var;
+        record->vars = var;
     }
-
-    if (VAR_TYPE_NUM == type)
-    {
-        struct item_number *var;
-         var = Malloc(sizeof(struct item_number));
-         if (NULL == record->number)
-         {
-             record->number = var;
-         }
-         else{
-             record->number_tail->next = var;
-         }
-         record->number_tail = var;
-        var->next = NULL;
-         return var;
+    else{
+        record->vars_tail->next = var;
     }
+    var->type = type;
 
-    if (VAR_TYPE_NUM_ARRAY == type)
-    {
-        struct item_array *var;
-         var = Malloc(sizeof(struct item_array) + sizeof(struct number) * size);
-         if (NULL == record->array)
-         {
-             record->array = var;
-         }
-         else{
-             record->array_tail->next = var;
-         }
-         record->array_tail = var;
-        var->next = NULL;
-         return var;
-    }
-    return NULL;
+    record->vars_tail = var;
+    var->next = NULL;
+    return var;
+
+
 }
 
 struct record *record_read(struct spectrum *sp, const char *src, size_t len)
 {
     int ovector[OVECCOUNT * 3];
     int rc, i;
-    struct item_string *item;
+    struct item *item;
     struct record *record;
 
     rc = pcre_exec(sp->re,            // code, 输入参数，用pcre_compile编译好的正则表达结构的指针
@@ -111,11 +96,11 @@ struct record *record_read(struct spectrum *sp, const char *src, size_t len)
     for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
         item = record_append(record, VAR_TYPE_STR, 0);
         item->name = sp->names + i - 1;
-        item->s.s = (char *)src + ovector[2*i];
-        item->s.l = ovector[2*i+1] - ovector[2*i];
+        item->v.s.s = (char *)src + ovector[2*i];
+        item->v.s.l = ovector[2*i+1] - ovector[2*i];
     }
 
-    lua_pushlightuserdata(sp->L, record);
+    record_lua_record_set(sp->L, record);
     lua_getglobal(sp->L, "spectrum_record");
     lua_pcall(sp->L, 0, 0, 0);
 
@@ -129,6 +114,7 @@ struct record *record_read(struct spectrum *sp, const char *src, size_t len)
     }
     return record;
 }
+
 
 int record_reads(struct spectrum *sp, const char *src, size_t len)
 {
@@ -145,6 +131,75 @@ int record_reads(struct spectrum *sp, const char *src, size_t len)
         }
         ++e;
     }
+
+    return 0;
+}
+
+static inline void record_lua_record_set(lua_State *L, struct record *record)
+{
+    lua_pushlightuserdata(L, record);
+    lua_setglobal(L, "__sp_record");
+}
+
+static inline struct record *record_lua_record_get(lua_State *L)
+{
+    struct record *record;
+
+    lua_getglobal(L, "__sp_record");
+    record = lua_touserdata(L, -1);
+    lua_pop(L, 1);
+
+    return record;
+}
+
+
+static int record_var_get(lua_State *L)
+{
+    struct record *record;
+    struct item *item;
+    string_t s;
+    record = record_lua_record_get(L);
+
+    if (NULL == record) {
+        return luaL_error(L, "no request object found");
+    }
+
+    s.s = (char *)lua_tolstring(L, -1, &s.l);
+
+    item = record_vars_get(record, &s);
+    if (!item)
+        return 0;
+
+    switch(item->type)
+    {
+        case VAR_TYPE_STR:
+            lua_pushlstring(L, item->v.s.s, item->v.s.l);
+            return 1;
+        default:
+            return 0;
+
+    }
+}
+
+static int record_var_append()
+{
+
+    return 0;
+}
+
+int record_lua_init(lua_State *L)
+{
+  /* {{{ register reference maps */
+    lua_newtable(L);    /* ngx.record */
+
+    lua_createtable(L, 0, 2 /* nrec */); /* metatable for .var */
+    lua_pushcfunction(L, record_var_get);
+    lua_setfield(L, -2, "__index");
+    lua_pushcfunction(L, record_var_append);
+    lua_setfield(L, -2, "append");
+    lua_setmetatable(L, -2);
+
+    lua_setfield(L, -2, "record");
 
     return 0;
 }

@@ -12,3 +12,5 @@ $(lua):
 	make -C luajit
 
 
+run:
+	./$(target)

@@ -30,6 +30,13 @@ int main()
 
     sp->L = luaL_newstate();
 
+    lua_createtable(sp->L, 0 /* narr */, 116 /* nrec */);    /* sp.* */
+    //lua_setfield(L, -2, "sp"); /* ngx package loaded */
+    record_lua_init(sp->L);
+
+    lua_setglobal(sp->L, "sp");
+
+
     luaL_openlibs(sp->L);
     luaL_dofile(sp->L, "spectrum.lua");
 
@@ -38,16 +45,16 @@ int main()
     record = sp->record;
 
 
-    while (record)
-    {
-        v = record->string;
-        printf("==================================\n");
-        while (v)
-        {
-
-            printf("%-15.*s: %.*s\n", v->name->l, v->name->s, v->s.l, v->s.s);
-            v = v->next;
-        }
-        record = record->next;
-    }
+//    while (record)
+//    {
+//        v = record->string;
+//        printf("==================================\n");
+//        while (v)
+//        {
+//
+//            printf("%-15.*s: %.*s\n", v->name->l, v->name->s, v->s.l, v->s.s);
+//            v = v->next;
+//        }
+//        record = record->next;
+//    }
 }
