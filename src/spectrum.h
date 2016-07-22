@@ -81,6 +81,7 @@ struct format{
 };
 
 
+int record_reads(struct format *fmt, const char *src, size_t len);
 
 #endif
 
