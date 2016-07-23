@@ -10,6 +10,9 @@
 #include <unistd.h>
 #include <string.h>
 #include "spectrum.h"
+
+#define loginfo printf
+
 static inline void record_lua_record_set(lua_State *L, struct record *record);
 static inline struct record *record_lua_record_get(lua_State *L);
 
@@ -67,14 +70,14 @@ static void *record_vars_append(struct record *record, enum var_type type, unsig
     return var;
 }
 
-struct record *record_read(struct spectrum *sp, const char *src, size_t len)
+struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
 {
     int ovector[OVECCOUNT * 3];
     int rc, i;
     struct item *item;
     struct record *record;
 
-    rc = pcre_exec(sp->re,            // code, 输入参数，用pcre_compile编译好的正则表达结构的指针
+    rc = pcre_exec(spt->sp->re,            // code, 输入参数，用pcre_compile编译好的正则表达结构的指针
             NULL,          // extra, 输入参数，用来向pcre_exec传一些额外的数据信息的结构的指针
             src,           // subject, 输入参数，要被用来匹配的字符串
             len,  // length, 输入参数， 要被用来匹配的字符串的指针
@@ -84,55 +87,55 @@ struct record *record_read(struct spectrum *sp, const char *src, size_t len)
             OVECCOUNT);    // ovecsize, 输入参数， 用来返回匹配位置偏移量的数组的最大大小
     // 返回值：匹配成功返回非负数，没有匹配返回负数
     if (rc < 0) {                     //如果没有匹配，返回错误信息
-        if (rc == PCRE_ERROR_NOMATCH) printf("Sorry, no match ...\n");
+        if (rc == PCRE_ERROR_NOMATCH) loginfo("Sorry, no match ...\n");
         else
-            printf("Matching error %d\n", rc);
+            loginfo("Matching error %d\n", rc);
         return NULL;
     }
 
     record = record_new();
     for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
         item = record_vars_append(record, VAR_TYPE_STR, 0);
-        item->name = sp->names + i - 1;
+        item->name = spt->sp->names + i - 1;
         item->v.s.s = (char *)src + ovector[2*i];
         item->v.s.l = ovector[2*i+1] - ovector[2*i];
     }
 
-    record_lua_record_set(sp->L, record);
-    sp_stage_lua_call(sp->L, "spectrum_record_read");
+    record_lua_record_set(spt->L, record);
+    sp_stage_lua_call(spt->L, "spectrum_record_read");
 
-    if (sp->record)
+    if (spt->record)
     {
-        sp->record_tail->next = record;
-        sp->record_tail = record;
+        spt->record_tail->next = record;
+        spt->record_tail = record;
     }
     else{
-        sp->record_tail = sp->record = record;
+        spt->record_tail = spt->record = record;
     }
     return record;
 }
 
 
-int record_reads(struct spectrum *sp, const char *src, size_t len)
+void *record_reads(void *_spt)
 {
     const char *s, *e;
-    sp->record_num = 0;
+    struct sp_thread *spt;
+    spt = (struct sp_thread*)_spt;
+    spt->record_num = 0;
 
-    s = e = src;
+    s = e = spt->log;
 
-    while (e - src < len)
+    while (e - spt->log < (long)spt->loglen)
     {
         if ('\n' == *e)
         {
-            record_read(sp, s, e - s);
+            record_read(spt, s, e - s);
             s = e + 1;
-            sp->record_num += 1;
+            spt->record_num += 1;
         }
         ++e;
     }
-    printf("RecordNum: %lu\n", sp->record_num);
-
-    return 0;
+    loginfo("RecordNum: %lu\n", spt->record_num);
 }
 
 static inline void record_lua_record_set(lua_State *L, struct record *record)
@@ -226,34 +229,51 @@ static int record_lua_var_append(lua_State *L)
     return 0;
 }
 
-int record_lua_init(lua_State *L)
+int record_lua_init(struct sp_thread *spt)
 {
+    spt->L = luaL_newstate();
+    luaL_openlibs(spt->L);
+
+    lua_createtable(spt->L, 0 /* narr */, 116 /* nrec */);    /* spt.* */
+    //lua_setfield(L, -2, "spt"); /* ngx package loaded */
+
+
   /*  register reference maps */
-    lua_newtable(L);    /* ngx.record */
+    lua_newtable(spt->L);    /* ngx.record */
 
-    lua_createtable(L, 0, 2 /* nrec */); /* metatable for .var */
+    lua_createtable(spt->L, 0, 2 /* nrec */); /* metatable for .var */
 
-    lua_pushcfunction(L, record_lua_var_get);
-    lua_setfield(L, -2, "__index");
+    lua_pushcfunction(spt->L, record_lua_var_get);
+    lua_setfield(spt->L, -2, "__index");
 
-    lua_setmetatable(L, -2);
+    lua_setmetatable(spt->L, -2);
 
-    lua_pushcfunction(L, record_lua_var_append);
-    lua_setfield(L, -2, "append");
+    lua_pushcfunction(spt->L, record_lua_var_append);
+    lua_setfield(spt->L, -2, "append");
 
-    lua_setfield(L, -2, "record");
+    lua_setfield(spt->L, -2, "record");
+
+    lua_setglobal(spt->L, "sp");
+
+    if (0 != luaL_dofile(spt->L, "spectrum.lua"))
+    {
+        printf("dofile `%s' err: %s\n", "spectrum.lua",
+                lua_tostring(spt->L, -1));
+        lua_pop(spt->L, 1);
+        return -1;
+    }
 
     return 0;
 }
 
-int record_iter(struct spectrum *sp)
+int record_iter(struct sp_thread *spt)
 {
     struct record *record;
-    record = sp->record;
+    record = spt->record;
     while (record)
     {
-        record_lua_record_set(sp->L, record);
-        sp_stage_lua_call(sp->L, "spectrum_record_iter");
+        record_lua_record_set(spt->L, record);
+        sp_stage_lua_call(spt->L, "spectrum_record_iter");
         record = record->next;
     }
     return 0;

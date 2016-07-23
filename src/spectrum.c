@@ -11,55 +11,127 @@
 #include <string.h>
 
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "spectrum.h"
+
+static struct spectrum *spectrum_init()
+{
+    struct spectrum *sp;
+    int i;
+    sp = Malloc(sizeof *sp);
+    memset(sp, 0, sizeof *sp);
+
+    sp->thread_num = sysconf(_SC_NPROCESSORS_ONLN);
+    sp->threads = Malloc(sizeof(struct sp_thread) * sp->thread_num);
+    memset(sp->threads, 0, sizeof(struct sp_thread) * sp->thread_num);
+
+    for (i=0; i < sp->thread_num; ++i)
+    {
+        sp->threads[i].sp = sp;
+    }
+
+    return sp;
+}
+
+
+static void spectrum_recod_reads(struct spectrum *sp)
+{
+    int i;
+    struct sp_thread *spt;
+    struct sws_filebuf *log_buf;
+    unsigned short thread_num;
+    thread_num = sp->thread_num;
+
+    // thread_num
+    log_buf = sws_fileread("/home/vagrant/tmp/test.log");
+    thread_num = MIN(log_buf->size/ 1024/ 1024, thread_num);
+    thread_num = MAX(1, thread_num);
+
+    {
+        int size;
+        const char *log;
+        size = log_buf->size / thread_num;
+        log = log_buf->buf;
+
+        // split log
+        for (i=0; i < thread_num; ++i)
+        {
+            spt = sp->threads + i;
+            spt->log = log;
+
+            if (1 == thread_num - i) // last one
+            {
+                spt->loglen = log_buf->buf + log_buf->size - spt->log;
+            }
+            else{
+                log = log + size;
+                while ('\n' != *log) ++log;
+                ++log;
+
+                spt->loglen = log - spt->log;
+            }
+
+        }
+    }
+
+    printf("create %d threads\n", thread_num);
+    for (i=0; i < thread_num; ++i)
+    {
+        spt = sp->threads + i;
+        record_lua_init(spt);
+        if (0 != pthread_create(&spt->tid, 0, record_reads, spt))
+        {
+            printf("create thread `%d' fail\n", i);
+        }
+    }
+
+    for (i=0; i < thread_num; ++i)
+    {
+        spt = sp->threads + i;
+        if (spt->tid)
+        {
+            pthread_join(spt->tid, NULL);
+            printf("thread %d finish\n", i);
+            spt->tid = 0;
+        }
+    }
+}
+
+
 
 int main()
 {
     struct spectrum *sp;
-    struct sws_filebuf *log_buf;
     struct timeval time_start, time_end;
 
     gettimeofday(&time_start, NULL);
 
-    log_buf = sws_fileread("t/ngx_logs");
+    // start
 
-    sp = compile("t/pattern");
+    sp = spectrum_init();
     if (!sp)
     {
-        printf("print sp compile fail\n");
+        printf("print sp init fail\n");
         return -1;
     }
 
-    sp->L = luaL_newstate();
-
-    lua_createtable(sp->L, 0 /* narr */, 116 /* nrec */);    /* sp.* */
-    //lua_setfield(L, -2, "sp"); /* ngx package loaded */
-    record_lua_init(sp->L);
-
-    lua_setglobal(sp->L, "sp");
-
-
-    luaL_openlibs(sp->L);
-
-
-    if (0 != luaL_dofile(sp->L, "spectrum.lua"))
+    if (0 != pattern_compile(sp, "t/pattern"))
     {
-        printf("dofile `%s' err: %s\n", "spectrum.lua", lua_tostring(sp->L, -1));
-        lua_pop(sp->L, 1);
+        printf("pattern_compile fail\n");
         return -1;
     }
 
-    // read records
-    record_reads(sp, log_buf->buf, log_buf->size);
+    spectrum_recod_reads(sp);
 
     // iter after read all records
-    record_iter(sp);
+    //record_iter(sp);
 
     // summary
-    sp_stage_lua_call(sp->L, "spectrum_summary");
+//    sp_stage_lua_call(sp->L, "spectrum_summary");
 
 
+    // end
     gettimeofday(&time_end, NULL);
     printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
     printf("TimeSpace: %lds %ldms %ldmi\n", time_end.tv_sec - time_start.tv_sec,

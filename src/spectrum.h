@@ -8,6 +8,8 @@
 #ifndef  __SPECTRUM_H__
 #define __SPECTRUM_H__
 
+#include <pthread.h>
+
 #include "pcre.h"
 #include "sws.h"
 
@@ -78,27 +80,41 @@ struct record{
     struct record *next;
 };
 
-
-struct spectrum{
-    struct sws_filebuf *raw_pattern;
-    char *pattern;
-    struct string *names;
-
+struct sp_thread{
     struct record *record;
     struct record *record_tail;
     size_t record_num;
 
+    const char *log;
+    size_t loglen;
+
     lua_State *L;
 
-    pcre *re;
+    pthread_t tid;
+
+    struct spectrum *sp;
 };
 
 
-int record_reads(struct spectrum *sp, const char *src, size_t len);
-int record_lua_init(lua_State *L);
-int record_iter(struct spectrum *sp);
+struct spectrum{
+    struct sws_filebuf *raw_pattern;
+    char               *pattern;
+    struct string      *names;
+    pcre               *re;
+
+    unsigned short thread_num;
+
+    struct sp_thread *threads;
+};
+
+
+int record_lua_init(struct sp_thread *spt);
+void *record_reads(void *);
+int record_iter(struct sp_thread *spt);
+
+int pattern_compile(struct spectrum *spectrum, const char *path);
+
 string_t *sp_lua_tolstring(lua_State *L, int index);
-struct spectrum *compile(const char *path);
 int sp_stage_lua_call(lua_State *L, const char *name);
 
 #endif

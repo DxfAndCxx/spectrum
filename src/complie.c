@@ -127,14 +127,10 @@ end:
 }
 
 
-struct spectrum *compile(const char *path)
+int pattern_compile(struct spectrum *spectrum, const char *path)
 {
-    struct spectrum *spectrum;
     const char *error;
     int erroffset;
-
-    spectrum = Malloc(sizeof *spectrum);
-    memset(spectrum, 0, sizeof *spectrum);
 
     spectrum->raw_pattern = sws_fileread(path);
 
@@ -152,9 +148,8 @@ struct spectrum *compile(const char *path)
     if (error) {                 //如果编译失败，返回错误信息
         printf("PCRE compilation failed at offset %d: %s\n", erroffset, error);
         free(spectrum);
-        return NULL;
+        return -1;
     }
-    return spectrum;
-
+    return 0;
 }
 
