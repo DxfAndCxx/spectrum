@@ -134,8 +134,12 @@ int main()
     // end
     gettimeofday(&time_end, NULL);
     printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
-    printf("TimeSpace: %lds %ldms %ldmi\n", time_end.tv_sec - time_start.tv_sec,
-            (time_end.tv_usec - time_start.tv_usec)/1000,
-            (time_end.tv_usec - time_start.tv_usec)%1000
+    int64_t t;
+    t = (time_end.tv_sec - time_start.tv_sec) * 1000000 +
+        time_end.tv_usec - time_start.tv_usec;
+
+    printf("TimeSpace: %lds %ldms %ldmi\n", t / 1000000,
+            t % 1000000 / 1000,
+            t % 1000
             );
 }
