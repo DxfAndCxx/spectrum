@@ -44,10 +44,19 @@ int main()
     luaL_openlibs(sp->L);
     luaL_dofile(sp->L, "spectrum.lua");
 
+    // read records
     record_reads(sp, log_buf->buf, log_buf->size);
+
+    // iter after read all records
     record_iter(sp);
 
 
+    // summary
+    lua_getglobal(sp->L, "spectrum_summary");
+    if (lua_isfunction(sp->L, -1))
+    {
+        lua_pcall(sp->L, 0, 0, 0);
+    }
 
     gettimeofday(&time_end, NULL);
     printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
@@ -55,7 +64,4 @@ int main()
             (time_end.tv_usec - time_start.tv_usec)/1000,
             (time_end.tv_usec - time_start.tv_usec)%1000
             );
-
-
-
 }

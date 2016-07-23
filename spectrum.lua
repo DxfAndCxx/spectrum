@@ -13,7 +13,13 @@ function spectrum_record()
 end
 
 
+local record_num = 0;
 
 function spectrum_record_iter()
+    record_num = record_num + 1
     print("cache_status: ", sp.record.cache_status, ' ip: ', sp.record.ip)
+end
+
+function spectrum_summary()
+    print("summary: record num: ", record_num)
 end
