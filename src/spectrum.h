@@ -21,6 +21,8 @@
 #define Free free
 #define OVECCOUNT 50
 
+#define debug printf
+
 enum var_type{
     VAR_TYPE_STR=0,
     VAR_TYPE_NUM,
@@ -103,8 +105,15 @@ struct spectrum{
     pcre               *re;
 
     unsigned short thread_num;
-
     struct sp_thread *threads;
+
+    lua_State *L;
+
+    const char *file_log;
+    const char *file_pattern;
+    const char *file_rc;
+
+    struct sws_filebuf *log_buf;
 };
 
 

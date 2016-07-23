@@ -5,6 +5,11 @@
 -- version      :   1.0.1
 -- description  :
 --
+--
+function spectrum_config()
+    sp.file_log = 't/ngx_logs'
+    sp.file_pattern = 't/pattern'
+end
 
 function spectrum_record_read()
     sp.record.append("cache_status", 'H');

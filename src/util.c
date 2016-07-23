@@ -18,10 +18,11 @@ string_t *sp_lua_tolstring(lua_State *L, int index)
     string_t *ss;
     s.s = (char *)lua_tolstring(L, index, &s.l);
 
-    ss = Malloc(s.l + sizeof s);
+    ss = Malloc(s.l + sizeof(s) + 1);
     ss->s = (char *)ss + sizeof s;
     ss->l = s.l;
     memcpy(ss->s, s.s, ss->l);
+    *(ss->s + ss->l) = 0;
     return ss;
 }
 
