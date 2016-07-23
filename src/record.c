@@ -99,13 +99,7 @@ struct record *record_read(struct spectrum *sp, const char *src, size_t len)
     }
 
     record_lua_record_set(sp->L, record);
-    lua_getglobal(sp->L, "spectrum_record");
-    if (0 != lua_pcall(sp->L, 0, 0, 0))
-    {
-        printf("error running function `spectrum_record': %s\n", lua_tostring(sp->L, -1));
-        lua_pop(sp->L, 1);
-    }
-
+    sp_stage_lua_call(sp->L, "spectrum_record_read");
 
     if (sp->record)
     {
@@ -259,8 +253,7 @@ int record_iter(struct spectrum *sp)
     while (record)
     {
         record_lua_record_set(sp->L, record);
-        lua_getglobal(sp->L, "spectrum_record_iter");
-        lua_pcall(sp->L, 0, 0, 0);
+        sp_stage_lua_call(sp->L, "spectrum_record_iter");
         record = record->next;
     }
     return 0;

@@ -6,9 +6,10 @@
 -- description  :
 --
 
-function spectrum_record()
-    local time = sp.record.time;
+function spectrum_record_read()
     sp.record.append("cache_status", 'H');
+
+
 --    print("time: ", time)
 end
 
@@ -21,5 +22,7 @@ function spectrum_record_iter()
 end
 
 function spectrum_summary()
+
     print("summary: record num: ", record_num)
 end
+

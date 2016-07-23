@@ -99,6 +99,7 @@ int record_lua_init(lua_State *L);
 int record_iter(struct spectrum *sp);
 string_t *sp_lua_tolstring(lua_State *L, int index);
 struct spectrum *compile(const char *path);
+int sp_stage_lua_call(lua_State *L, const char *name);
 
 #endif
 

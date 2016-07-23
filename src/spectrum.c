@@ -18,7 +18,6 @@ int main()
 {
     struct spectrum *sp;
     struct sws_filebuf *log_buf;
-    struct record *record;
     struct timeval time_start, time_end;
 
     gettimeofday(&time_start, NULL);
@@ -42,7 +41,14 @@ int main()
 
 
     luaL_openlibs(sp->L);
-    luaL_dofile(sp->L, "spectrum.lua");
+
+
+    if (0 != luaL_dofile(sp->L, "spectrum.lua"))
+    {
+        printf("dofile `%s' err: %s\n", "spectrum.lua", lua_tostring(sp->L, -1));
+        lua_pop(sp->L, 1);
+        return -1;
+    }
 
     // read records
     record_reads(sp, log_buf->buf, log_buf->size);
@@ -50,13 +56,9 @@ int main()
     // iter after read all records
     record_iter(sp);
 
-
     // summary
-    lua_getglobal(sp->L, "spectrum_summary");
-    if (lua_isfunction(sp->L, -1))
-    {
-        lua_pcall(sp->L, 0, 0, 0);
-    }
+    sp_stage_lua_call(sp->L, "spectrum_summary");
+
 
     gettimeofday(&time_end, NULL);
     printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
