@@ -49,7 +49,7 @@ static struct item *record_vars_get(struct record *record, string_t *s)
 }
 
 
-static void *record_append(struct record *record, enum var_type type, unsigned int size)
+static void *record_vars_append(struct record *record, enum var_type type, unsigned int size)
 {
     struct item *var;
     var = Malloc(sizeof(*var));
@@ -65,8 +65,6 @@ static void *record_append(struct record *record, enum var_type type, unsigned i
     record->vars_tail = var;
     var->next = NULL;
     return var;
-
-
 }
 
 struct record *record_read(struct spectrum *sp, const char *src, size_t len)
@@ -94,7 +92,7 @@ struct record *record_read(struct spectrum *sp, const char *src, size_t len)
 
     record = record_new();
     for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
-        item = record_append(record, VAR_TYPE_STR, 0);
+        item = record_vars_append(record, VAR_TYPE_STR, 0);
         item->name = sp->names + i - 1;
         item->v.s.s = (char *)src + ovector[2*i];
         item->v.s.l = ovector[2*i+1] - ovector[2*i];
@@ -102,7 +100,12 @@ struct record *record_read(struct spectrum *sp, const char *src, size_t len)
 
     record_lua_record_set(sp->L, record);
     lua_getglobal(sp->L, "spectrum_record");
-    lua_pcall(sp->L, 0, 0, 0);
+    if (0 != lua_pcall(sp->L, 0, 0, 0))
+    {
+        printf("error running function `spectrum_record': %s\n", lua_tostring(sp->L, -1));
+        lua_pop(sp->L, 1);
+    }
+
 
     if (sp->record)
     {
@@ -119,6 +122,7 @@ struct record *record_read(struct spectrum *sp, const char *src, size_t len)
 int record_reads(struct spectrum *sp, const char *src, size_t len)
 {
     const char *s, *e;
+    sp->record_num = 0;
 
     s = e = src;
 
@@ -128,9 +132,11 @@ int record_reads(struct spectrum *sp, const char *src, size_t len)
         {
             record_read(sp, s, e - s);
             s = e + 1;
+            sp->record_num += 1;
         }
         ++e;
     }
+    printf("RecordNum: %lu\n", sp->record_num);
 
     return 0;
 }
@@ -153,7 +159,7 @@ static inline struct record *record_lua_record_get(lua_State *L)
 }
 
 
-static int record_var_get(lua_State *L)
+static int record_lua_var_get(lua_State *L)
 {
     struct record *record;
     struct item *item;
@@ -181,25 +187,81 @@ static int record_var_get(lua_State *L)
     }
 }
 
-static int record_var_append()
+static int record_lua_var_append(lua_State *L)
 {
+    struct record *record;
+    struct item *item;
+    int value_type;
+    string_t *s;
+    string_t *v;
+    const char *msg;
+    record = record_lua_record_get(L);
+
+    if (NULL == record) {
+        return luaL_error(L, "no request object found");
+    }
+
+    if (lua_type(L, 1) != LUA_TSTRING) {
+        return luaL_error(L, "bad variable name");
+    }
+
+
+    s = sp_lua_tolstring(L, 1);
+
+    value_type = lua_type(L, 2);
+    switch (value_type) {
+    case LUA_TNUMBER:
+    case LUA_TSTRING:
+        v = sp_lua_tolstring(L, 2);
+
+        item = record_vars_append(record, VAR_TYPE_STR, 0);
+        item->name = s;
+        item->v.s = *v;
+        break;
+
+    case LUA_TNIL:
+        /* undef the variable */
+        return 0;
+
+    default:
+        msg = lua_pushfstring(L, "string, number, or nil expected, "
+                              "but got %s", lua_typename(L, value_type));
+        return luaL_argerror(L, 1, msg);
+    }
 
     return 0;
 }
 
 int record_lua_init(lua_State *L)
 {
-  /* {{{ register reference maps */
+  /*  register reference maps */
     lua_newtable(L);    /* ngx.record */
 
     lua_createtable(L, 0, 2 /* nrec */); /* metatable for .var */
-    lua_pushcfunction(L, record_var_get);
+
+    lua_pushcfunction(L, record_lua_var_get);
     lua_setfield(L, -2, "__index");
-    lua_pushcfunction(L, record_var_append);
-    lua_setfield(L, -2, "append");
+
     lua_setmetatable(L, -2);
+
+    lua_pushcfunction(L, record_lua_var_append);
+    lua_setfield(L, -2, "append");
 
     lua_setfield(L, -2, "record");
 
+    return 0;
+}
+
+int record_iter(struct spectrum *sp)
+{
+    struct record *record;
+    record = sp->record;
+    while (record)
+    {
+        record_lua_record_set(sp->L, record);
+        lua_getglobal(sp->L, "spectrum_record_iter");
+        lua_pcall(sp->L, 0, 0, 0);
+        record = record->next;
+    }
     return 0;
 }

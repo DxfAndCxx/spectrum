@@ -45,8 +45,9 @@ int main()
     luaL_dofile(sp->L, "spectrum.lua");
 
     record_reads(sp, log_buf->buf, log_buf->size);
+    record_iter(sp);
 
-    record = sp->record;
+
 
     gettimeofday(&time_end, NULL);
     printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");

@@ -1,6 +1,6 @@
 LUAFLAGS= -lm -ldl
 CFLAGS= -g -I sws -I luajit/src/ -lpcre -lsws -L sws $(LUAFLAGS)
-objects=src/complie.o src/record.o src/spectrum.o
+objects=src/complie.o src/record.o src/spectrum.o src/util.o
 target=spectrum
 lua=luajit/src/libluajit.a
 

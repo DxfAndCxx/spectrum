@@ -86,6 +86,7 @@ struct spectrum{
 
     struct record *record;
     struct record *record_tail;
+    size_t record_num;
 
     lua_State *L;
 
@@ -95,6 +96,8 @@ struct spectrum{
 
 int record_reads(struct spectrum *sp, const char *src, size_t len);
 int record_lua_init(lua_State *L);
+int record_iter(struct spectrum *sp);
+string_t *sp_lua_tolstring(lua_State *L, int index);
 struct spectrum *compile(const char *path);
 
 #endif

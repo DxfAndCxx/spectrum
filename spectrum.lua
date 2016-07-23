@@ -8,5 +8,12 @@
 
 function spectrum_record()
     local time = sp.record.time;
-    print("time: ", time)
+    sp.record.append("cache_status", 'H');
+--    print("time: ", time)
+end
+
+
+
+function spectrum_record_iter()
+    print("cache_status: ", sp.record.cache_status, ' ip: ', sp.record.ip)
 end
