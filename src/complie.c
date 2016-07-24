@@ -127,18 +127,23 @@ end:
 }
 
 
-int pattern_compile(struct spectrum *spectrum, const char *path)
+int pattern_compile(struct spectrum *sp, const char *path)
 {
     const char *error;
     int erroffset;
 
-    spectrum->raw_pattern = sws_fileread(path);
+    sp->raw_pattern = sws_fileread(path);
+    if (!sp->raw_pattern)
+    {
+        logerr("read `%s' fail\n", path);
+        return -1;
+    }
 
-    read_pattern(spectrum);
+    read_pattern(sp);
 
-    printf("Pattern: /%s/\n", spectrum->pattern);
+    printf("Pattern: /%s/\n", sp->pattern);
 
-    spectrum->re = pcre_compile(spectrum->pattern,       // pattern, 输入参数，将要被编译的字符串形式的正则表达式
+    sp->re = pcre_compile(sp->pattern,       // pattern, 输入参数，将要被编译的字符串形式的正则表达式
                       0,            // options, 输入参数，用来指定编译时的一些选项
                       &error,       // errptr, 输出参数，用来输出错误信息
                       &erroffset,   // erroffset, 输出参数，pattern中出错位置的偏移量
@@ -147,7 +152,6 @@ int pattern_compile(struct spectrum *spectrum, const char *path)
     // 返回值：被编译好的正则表达式的pcre内部表示结构
     if (error) {                 //如果编译失败，返回错误信息
         printf("PCRE compilation failed at offset %d: %s\n", erroffset, error);
-        free(spectrum);
         return -1;
     }
     return 0;

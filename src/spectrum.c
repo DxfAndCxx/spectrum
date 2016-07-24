@@ -45,8 +45,15 @@ static int spectrum_lua_var_set(lua_State *L)
 }
 
 
-static void spectrum_lua_init(struct spectrum *sp)
+static int spectrum_lua_init(struct spectrum *sp)
 {
+
+    if (0 != access(sp->file_rc, R_OK))
+    {
+        printf("cannot access `%s'\n", sp->file_rc);
+        return -1;
+    }
+
     sp->L = luaL_newstate();
     luaL_openlibs(sp->L);
 
@@ -70,6 +77,7 @@ static void spectrum_lua_init(struct spectrum *sp)
     lua_pushlightuserdata(sp->L, sp);
     lua_setglobal(sp->L, "__sp");
 
+    return 0;
 }
 
 
@@ -84,14 +92,10 @@ static struct spectrum *spectrum_init()
 
 
     sp->file_rc = "spectrum.lua";
-
-    spectrum_lua_init(sp);
-
-    sp_stage_lua_call(sp->L, "spectrum_config");
     return sp;
 }
 
-static void spectrum_log_split(struct spectrum *sp)
+static int spectrum_log_split(struct spectrum *sp)
 {
     // thread_num
     struct sws_filebuf *log_buf;
@@ -101,6 +105,12 @@ static void spectrum_log_split(struct spectrum *sp)
 
     // calc thread_num
     log_buf = sws_fileread(sp->file_log);
+    if (!log_buf)
+    {
+        logerr("open `%s' fail\n", sp->file_log);
+        return -1;
+    }
+
     sp->log_buf = log_buf;
 
     sp->thread_num = MIN(log_buf->size/ 1024/ 1024, sp->thread_num);
@@ -135,16 +145,19 @@ static void spectrum_log_split(struct spectrum *sp)
             spt->loglen = log - spt->log;
         }
     }
-
+    return 0;
 }
 
 
-static void spectrum_recod_reads(struct spectrum *sp)
+static int spectrum_recod_reads(struct spectrum *sp)
 {
     int i;
     struct sp_thread *spt;
 
-    spectrum_log_split(sp);
+    if (0 != spectrum_log_split(sp))
+    {
+        return -1;
+    }
 
     printf("create %d threads\n", sp->thread_num);
     for (i=0; i < sp->thread_num; ++i)
@@ -167,11 +180,54 @@ static void spectrum_recod_reads(struct spectrum *sp)
             spt->tid = 0;
         }
     }
+    return 0;
+}
+
+
+static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
+{
+    int i;
+    const char *p;
+
+    i = 1;
+    while(i < argc)
+    {
+        p = argv[i++];
+
+        if ('-' != *p++)
+        {
+            printf("invalid option: `%s'\n", p - 1);
+            return -1;
+        }
+
+        switch(*p)
+        {
+            case 's':
+            case 'S':
+                sp->option_work_as_server = 1;
+                break;
+
+            case 'f':
+                if (i == argc)
+                {
+                    printf("option: `%s' except arg\n", p - 1);
+                    return -1;
+                }
+                sp->file_rc = argv[i++];
+                break;
+
+            default:
+                printf("invalid option: `%s'\n", p - 1);
+                return -1;
+        }
+    }
+
+    return 0;
 }
 
 
 
-int main()
+int main(int argc, const char **argv)
 {
     struct spectrum *sp;
     struct timeval time_start, time_end;
@@ -179,13 +235,18 @@ int main()
     gettimeofday(&time_start, NULL);
 
     // start
-
     sp = spectrum_init();
     if (!sp)
     {
         printf("print sp init fail\n");
         return -1;
     }
+
+    if (0 != spectrum_options(sp, argc, argv)) return -1;
+
+    if (0 != spectrum_lua_init(sp)) return -1;
+
+    sp_stage_lua_call(sp->L, "spectrum_config");
 
     if (!sp->file_log || !sp->file_pattern)
     {
@@ -201,7 +262,7 @@ int main()
         return -1;
     }
 
-    spectrum_recod_reads(sp);
+    if (0 != spectrum_recod_reads(sp)) return -1;
 
     // iter after read all records
     //record_iter(sp);

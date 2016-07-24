@@ -22,6 +22,7 @@
 #define OVECCOUNT 50
 
 #define debug
+#define logerr printf
 
 enum var_type{
     VAR_TYPE_STR=0,
@@ -116,6 +117,9 @@ struct spectrum{
     const char *file_rc;
 
     struct sws_filebuf *log_buf;
+
+    // options
+    int option_work_as_server;
 };
 
 
