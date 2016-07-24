@@ -166,7 +166,7 @@ static int spectrum_recod_reads(struct spectrum *sp)
         if (spt->tid)
         {
             pthread_join(spt->tid, NULL);
-            printf("thread %d finish\n", i);
+   //         printf("thread %d finish\n", i);
             spt->tid = 0;
         }
     }
@@ -207,7 +207,7 @@ static void spectrum_recod_iter(struct spectrum *sp)
         if (spt->tid)
         {
             pthread_join(spt->tid, NULL);
-            printf("thread %d finish\n", i);
+//            printf("thread %d finish\n", i);
             spt->tid = 0;
         }
     }
