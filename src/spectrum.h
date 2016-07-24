@@ -126,6 +126,7 @@ struct spectrum{
     int option_server_cycle;
     int option_server_port;
     const char *option_server_host;
+    const char *option_client_cmd;
 
 };
 
@@ -137,6 +138,7 @@ void *record_iter(void *_);
 int pattern_compile(struct spectrum *spectrum, const char *path);
 
 int spectrum_start_server(struct spectrum *sp);
+int spectrum_start_client(struct spectrum *sp);
 
 string_t *sp_lua_tolstring(lua_State *L, int index);
 int sp_stage_lua_call(lua_State *L, const char *name);

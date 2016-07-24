@@ -260,6 +260,11 @@ static void spectrum_handle_cmd(struct spectrum *sp, const char *cmd)
         sp->option_server_cycle = 0;
         return;
     }
+
+    const char *msg;
+    msg = "can not distinguish the command\n";
+
+    send(sp->confd, msg, strlen(msg), 0);
 }
 
 

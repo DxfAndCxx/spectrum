@@ -61,6 +61,15 @@ static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
                 sp->file_rc = argv[i++];
                 break;
 
+            case 'c':
+                if (i == argc)
+                {
+                    printf("option: `%s' except arg\n", p - 1);
+                    return -1;
+                }
+                sp->option_client_cmd = argv[i++];
+                break;
+
             default:
                 printf("invalid option: `%s'\n", p - 1);
                 return -1;
@@ -89,4 +98,5 @@ int main(int argc, const char **argv)
     {
         return spectrum_start_server(sp);
     }
+    return spectrum_start_client(sp);
 }
