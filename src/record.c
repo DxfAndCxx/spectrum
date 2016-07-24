@@ -87,9 +87,13 @@ struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
             OVECCOUNT);    // ovecsize, 输入参数， 用来返回匹配位置偏移量的数组的最大大小
     // 返回值：匹配成功返回非负数，没有匹配返回负数
     if (rc < 0) {                     //如果没有匹配，返回错误信息
-        if (rc == PCRE_ERROR_NOMATCH) loginfo("Sorry, no match ...\n");
-        else
+        if (rc == PCRE_ERROR_NOMATCH){
+            spt->record_nomatch_num += 1;
+        }
+        else{
             loginfo("Matching error %d\n", rc);
+            spt->record_errmatch_num += 1;
+        }
         return NULL;
     }
 
@@ -104,6 +108,7 @@ struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
     record_lua_record_set(spt->L, record);
     sp_stage_lua_call(spt->L, "spectrum_record_read");
 
+    spt->record_num += 1;
     if (spt->record)
     {
         spt->record_tail->next = record;
@@ -121,7 +126,6 @@ void *record_reads(void *_spt)
     const char *s, *e;
     struct sp_thread *spt;
     spt = (struct sp_thread*)_spt;
-    spt->record_num = 0;
 
     s = e = spt->log;
 
@@ -131,11 +135,13 @@ void *record_reads(void *_spt)
         {
             record_read(spt, s, e - s);
             s = e + 1;
-            spt->record_num += 1;
         }
         ++e;
     }
-    loginfo("RecordNum: %lu\n", spt->record_num);
+    loginfo("Records Match: %lu NoMatch: %lu ErrMatch: %lu\n",
+            spt->record_num, spt->record_nomatch_num, spt->record_errmatch_num);
+
+    return NULL;
 }
 
 static inline void record_lua_record_set(lua_State *L, struct record *record)

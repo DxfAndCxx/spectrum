@@ -21,7 +21,7 @@
 #define Free free
 #define OVECCOUNT 50
 
-#define debug printf
+#define debug
 
 enum var_type{
     VAR_TYPE_STR=0,
@@ -86,6 +86,8 @@ struct sp_thread{
     struct record *record;
     struct record *record_tail;
     size_t record_num;
+    size_t record_nomatch_num;
+    size_t record_errmatch_num;
 
     const char *log;
     size_t loglen;
