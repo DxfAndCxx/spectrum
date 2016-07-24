@@ -272,7 +272,7 @@ static int spectrum_server_cycle(struct spectrum *sp)
 {
     char buf[30];
 
-    if (!listen(sp->server_fd, 5))
+    if (listen(sp->server_fd, 5))
     {
         logerr("%s\n", strerror(errno));
         return -1;
@@ -296,9 +296,9 @@ int spectrum_start_server(struct spectrum *sp)
 {
 
     sp->server_fd = sws_net_bind(sp->option_server_host,
-            sp->option_server_port);
+            sp->option_server_port, 0);
 
-    if (-1 > sp->server_fd)
+    if (sp->server_fd < 0)
     {
         logerr("%s\n", geterr());
         return -1;
