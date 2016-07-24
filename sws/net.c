@@ -55,7 +55,7 @@ bool sws_net_resolve(const char *addr, char *buf, size_t size)
 }
 
 
-int sws_net_bind(const char *addr, int port, bool noblock)
+int sws_net_server(const char *addr, int port, bool noblock, int backlog)
 {
     int s;
     int flag = 1;
@@ -74,12 +74,6 @@ int sws_net_bind(const char *addr, int port, bool noblock)
         return -1;
     }
 
-    if (noblock && sws_net_noblock(s, true) < 0)
-    {
-        seterr("connect error: set noblock: %s", strerror(errno));
-        return -1;
-    }
-
     struct sockaddr_in remote_addr;
     memset(&remote_addr, 0, sizeof(remote_addr));
     remote_addr.sin_family = AF_INET;
@@ -90,6 +84,18 @@ int sws_net_bind(const char *addr, int port, bool noblock)
     {
         seterr("bind error: %s", strerror(errno));
         close(s);
+        return -1;
+    }
+
+    if (listen(s, backlog))
+    {
+        seterr("%s\n", strerror(errno));
+        return -1;
+    }
+
+    if (noblock && sws_net_noblock(s, true) < 0)
+    {
+        seterr("connect error: set noblock: %s", strerror(errno));
         return -1;
     }
 

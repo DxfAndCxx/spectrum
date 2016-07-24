@@ -84,8 +84,11 @@ struct record{
 };
 
 struct sp_thread{
+    struct record *current;
+
     struct record *record;
     struct record *record_tail;
+
     size_t record_num;
     size_t record_nomatch_num;
     size_t record_errmatch_num;
@@ -98,6 +101,7 @@ struct sp_thread{
     pthread_t tid;
 
     struct spectrum *sp;
+    bool flag_drop;
 };
 
 

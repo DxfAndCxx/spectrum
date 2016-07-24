@@ -8,15 +8,14 @@
 --
 function spectrum_config()
     sp.file_log = 't/ngx_logs'
-    sp.file_log = '/home/vagrant/tmp/test.log'
+    --sp.file_log = '/home/vagrant/tmp/test.log'
     sp.file_pattern = 't/pattern'
 end
 
 function spectrum_record_read()
     sp.record.append("cache_status", 'H');
-
-
---    print("time: ", time)
+    print("time: ", sp.record.vars.time)
+    sp.record.drop()
 end
 
 
@@ -24,6 +23,7 @@ local record_num = 0;
 
 function spectrum_record_iter()
     record_num = record_num + 1
+    print("cache_status: ", sp.record.vars.cache_status)
 end
 
 function spectrum_record_iter_end()

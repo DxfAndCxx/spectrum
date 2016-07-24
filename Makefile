@@ -14,14 +14,13 @@ lua=luajit/src/libluajit.a
 sws=sws/libsws.a
 
 all:$(objects) $(lua) $(sws)
+	make -C sws
 	gcc -o $(target) $^ $(LDFLAGS)
 
 
 $(lua):
 	make -C luajit
 
-$(sws):
-	make -C sws
 
 clean:
 	find src -name '*.o' | xargs rm

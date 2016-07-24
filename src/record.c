@@ -13,27 +13,35 @@
 
 #define loginfo printf
 
-static inline void record_lua_record_set(lua_State *L, struct record *record);
-static inline struct record *record_lua_record_get(lua_State *L);
+static inline void record_lua_spt_set(lua_State *L, struct sp_thread *sp);
+static inline struct sp_thread *record_lua_spt_get(lua_State *L);
 
 static struct record *record_new()
 {
     struct record *record;
     record = Malloc(sizeof(*record));
 
-    //record->array = NULL;
-    //record->array_tail = NULL;
-
-    //record->number = NULL;
-    //record->number_tail = NULL;
-
-    //record->string = NULL;
-    //record->string_tail = NULL;
-
     record->next = NULL;
     record->vars = record->vars_tail = NULL;
 
     return record;
+}
+
+
+//just can be destory in record_reads
+static void record_destory(struct record *record)
+{
+    struct item *item;
+    struct item *t;
+    item = record->vars;
+    while (item)
+    {
+        t = item;
+        item = t->next;
+        free(t);
+    }
+
+    free(record);
 }
 
 
@@ -105,8 +113,15 @@ struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
         item->v.s.l = ovector[2*i+1] - ovector[2*i];
     }
 
-    record_lua_record_set(spt->L, record);
+    spt->current = record;
     sp_stage_lua_call(spt->L, "spectrum_record_read");
+
+    if (spt->flag_drop)
+    {
+        spt->flag_drop = 0;
+        record_destory(record);
+        return NULL;
+    }
 
     spt->record_num += 1;
     if (spt->record)
@@ -144,21 +159,37 @@ void *record_reads(void *_spt)
     return NULL;
 }
 
-static inline void record_lua_record_set(lua_State *L, struct record *record)
+static inline void record_lua_spt_set(lua_State *L, struct sp_thread *spt)
 {
-    lua_pushlightuserdata(L, record);
-    lua_setglobal(L, "__sp_record");
+    lua_pushlightuserdata(L, spt);
+    lua_setglobal(L, "__sp_thread");
 }
 
-static inline struct record *record_lua_record_get(lua_State *L)
+static inline struct sp_thread *record_lua_spt_get(lua_State *L)
 {
-    struct record *record;
+    struct sp_thread *spt;
 
-    lua_getglobal(L, "__sp_record");
-    record = lua_touserdata(L, -1);
+    lua_getglobal(L, "__sp_thread");
+    spt = lua_touserdata(L, -1);
     lua_pop(L, 1);
 
-    return record;
+    return spt;
+}
+
+
+
+static int record_lua_drop(lua_State *L)
+{
+    struct sp_thread *spt;
+    spt = record_lua_spt_get(L);
+
+    if (NULL == spt) {
+        return luaL_error(L, "no request object found");
+    }
+
+    spt->flag_drop = 1;
+
+    return 0;
 }
 
 
@@ -166,12 +197,14 @@ static int record_lua_var_get(lua_State *L)
 {
     struct record *record;
     struct item *item;
+    struct sp_thread *spt;
     string_t s;
-    record = record_lua_record_get(L);
+    spt = record_lua_spt_get(L);
 
-    if (NULL == record) {
+    if (NULL == spt) {
         return luaL_error(L, "no request object found");
     }
+    record = spt->current;
 
     s.s = (char *)lua_tolstring(L, -1, &s.l);
 
@@ -190,19 +223,22 @@ static int record_lua_var_get(lua_State *L)
     }
 }
 
-static int record_lua_var_append(lua_State *L)
+static int record_lua_append(lua_State *L)
 {
     struct record *record;
     struct item *item;
     int value_type;
+    struct sp_thread *spt;
     string_t *s;
     string_t *v;
     const char *msg;
-    record = record_lua_record_get(L);
+    spt = record_lua_spt_get(L);
 
-    if (NULL == record) {
+    if (NULL == spt) {
         return luaL_error(L, "no request object found");
     }
+
+    record = spt->current;
 
     if (lua_type(L, 1) != LUA_TSTRING) {
         return luaL_error(L, "bad variable name");
@@ -241,11 +277,10 @@ int record_lua_init(struct sp_thread *spt)
     luaL_openlibs(spt->L);
 
     lua_createtable(spt->L, 0 /* narr */, 116 /* nrec */);    /* spt.* */
-    //lua_setfield(L, -2, "spt"); /* ngx package loaded */
 
+    lua_newtable(spt->L);    /* sp.record */
 
-  /*  register reference maps */
-    lua_newtable(spt->L);    /* ngx.record */
+    lua_newtable(spt->L);    /* sp.record.vars */
 
     lua_createtable(spt->L, 0, 2 /* nrec */); /* metatable for .var */
 
@@ -254,12 +289,19 @@ int record_lua_init(struct sp_thread *spt)
 
     lua_setmetatable(spt->L, -2);
 
-    lua_pushcfunction(spt->L, record_lua_var_append);
+    lua_setfield(spt->L, -2, "vars");
+
+    lua_pushcfunction(spt->L, record_lua_append);
     lua_setfield(spt->L, -2, "append");
+
+    lua_pushcfunction(spt->L, record_lua_drop);
+    lua_setfield(spt->L, -2, "drop");
 
     lua_setfield(spt->L, -2, "record");
 
     lua_setglobal(spt->L, "sp");
+
+    record_lua_spt_set(spt->L, spt);
 
     if (0 != luaL_dofile(spt->L, "spectrum.lua"))
     {
@@ -281,7 +323,7 @@ void *record_iter(void *_)
     record = spt->record;
     while (record)
     {
-        record_lua_record_set(spt->L, record);
+        spt->current = record;
         sp_stage_lua_call(spt->L, "spectrum_record_iter");
         record = record->next;
     }
