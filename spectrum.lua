@@ -7,8 +7,8 @@
 --
 --
 function spectrum_config()
-    --sp.file_log = '/home/vagrant/tmp/test.log'
     sp.file_log = 't/ngx_logs'
+    sp.file_log = '/home/vagrant/tmp/test.log'
     sp.file_pattern = 't/pattern'
 end
 
@@ -24,7 +24,11 @@ local record_num = 0;
 
 function spectrum_record_iter()
     record_num = record_num + 1
-    print("cache_status: ", sp.record.cache_status, ' ip: ', sp.record.ip)
+end
+
+function spectrum_record_iter_end()
+    record_num = record_num + 1
+    print('record_num: ', record_num)
 end
 
 function spectrum_summary()

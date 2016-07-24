@@ -285,5 +285,7 @@ void *record_iter(void *_)
         sp_stage_lua_call(spt->L, "spectrum_record_iter");
         record = record->next;
     }
+
+    sp_stage_lua_call(spt->L, "spectrum_record_iter_end");
     return 0;
 }

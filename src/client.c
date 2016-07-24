@@ -32,7 +32,12 @@ int spectrum_start_client(struct spectrum *sp)
         return -1;
     }
 
-    fd = sws_net_connect(sp->option_server_host, sp->option_server_port);
+    fd = sws_net_connect(sp->option_server_host, sp->option_server_port, 0);
+    if (fd < 0)
+    {
+        logerr("%s\n", geterr());
+        return -1;
+    }
 
     memcpy(buf, sp->option_client_cmd, cmdlen);
 

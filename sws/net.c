@@ -55,13 +55,19 @@ bool sws_net_resolve(const char *addr, char *buf, size_t size)
 }
 
 
-int sws_net_bind(const char *addr, int port)
+int sws_net_bind(const char *addr, int port, bool noblock)
 {
     int s;
     s = socket(AF_INET,  SOCK_STREAM, 0);
     if (s < 0)
     {
         seterr("bind error: create socket: %s", strerror(errno));
+        return -1;
+    }
+
+    if (noblock && sws_net_noblock(s, true) < 0)
+    {
+        seterr("connect error: set noblock: %s", strerror(errno));
         return -1;
     }
 
@@ -82,7 +88,7 @@ int sws_net_bind(const char *addr, int port)
 }
 
 
-int sws_net_connect(const char *addr, int port)
+int sws_net_connect(const char *addr, int port, bool noblock)
 {
     int s;
     s = socket(AF_INET,  SOCK_STREAM, 0);
@@ -92,7 +98,7 @@ int sws_net_connect(const char *addr, int port)
         return -1;
     }
 
-    if (sws_net_noblock(s, true) < 0)
+    if (noblock && sws_net_noblock(s, true) < 0)
     {
         seterr("connect error: set noblock: %s", strerror(errno));
         return -1;
