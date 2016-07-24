@@ -58,10 +58,19 @@ bool sws_net_resolve(const char *addr, char *buf, size_t size)
 int sws_net_bind(const char *addr, int port, bool noblock)
 {
     int s;
+    int flag = 1;
+
     s = socket(AF_INET,  SOCK_STREAM, 0);
     if (s < 0)
     {
         seterr("bind error: create socket: %s", strerror(errno));
+        return -1;
+    }
+
+    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)))
+    {
+        seterr("connect error: set SO_REUSEADDR fail %s", strerror(errno));
+        close(s);
         return -1;
     }
 
@@ -88,6 +97,7 @@ int sws_net_bind(const char *addr, int port, bool noblock)
 }
 
 
+
 int sws_net_connect(const char *addr, int port, bool noblock)
 {
     int s;
@@ -97,7 +107,6 @@ int sws_net_connect(const char *addr, int port, bool noblock)
         seterr("connect error: create socket: %s", strerror(errno));
         return -1;
     }
-
     if (noblock && sws_net_noblock(s, true) < 0)
     {
         seterr("connect error: set noblock: %s", strerror(errno));
