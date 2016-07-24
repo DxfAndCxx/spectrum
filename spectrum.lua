@@ -7,7 +7,8 @@
 --
 --
 function spectrum_config()
-    sp.file_log = '/home/vagrant/tmp/test.log'
+    --sp.file_log = '/home/vagrant/tmp/test.log'
+    sp.file_log = 't/ngx_logs'
     sp.file_pattern = 't/pattern'
 end
 

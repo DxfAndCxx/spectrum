@@ -272,9 +272,12 @@ int record_lua_init(struct sp_thread *spt)
     return 0;
 }
 
-int record_iter(struct sp_thread *spt)
+void *record_iter(void *_)
 {
+    struct sp_thread *spt;
     struct record *record;
+
+    spt = _;
     record = spt->record;
     while (record)
     {

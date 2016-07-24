@@ -10,15 +10,6 @@
 #include <stddef.h>
 #include <unistd.h>
 #include <string.h>
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <stdbool.h>
-#include <errno.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <malloc.h>
 #include <stdarg.h>
 #include <strings.h>
@@ -62,6 +53,34 @@ bool sws_net_resolve(const char *addr, char *buf, size_t size)
     inet_ntop(hptr->h_addrtype, *hptr->h_addr_list, buf, size);
     return true;
 }
+
+
+int sws_net_bind(const char *addr, int port)
+{
+    int s;
+    s = socket(AF_INET,  SOCK_STREAM, 0);
+    if (s < 0)
+    {
+        seterr("bind error: create socket: %s", strerror(errno));
+        return -1;
+    }
+
+    struct sockaddr_in remote_addr;
+    memset(&remote_addr, 0, sizeof(remote_addr));
+    remote_addr.sin_family = AF_INET;
+    remote_addr.sin_addr.s_addr = inet_addr(addr);
+    remote_addr.sin_port = htons(port);
+
+    if(bind(s, (struct sockaddr*)&remote_addr, sizeof(struct sockaddr)))
+    {
+        seterr("bind error: %s", strerror(errno));
+        close(s);
+        return -1;
+    }
+
+    return s;
+}
+
 
 int sws_net_connect(const char *addr, int port)
 {

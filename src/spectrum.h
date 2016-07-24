@@ -118,16 +118,25 @@ struct spectrum{
 
     struct sws_filebuf *log_buf;
 
+    int server_fd;
+    int confd;
+
     // options
     int option_work_as_server;
+    int option_server_cycle;
+    int option_server_port;
+    const char *option_server_host;
+
 };
 
 
 int record_lua_init(struct sp_thread *spt);
 void *record_reads(void *);
-int record_iter(struct sp_thread *spt);
+void *record_iter(void *_);
 
 int pattern_compile(struct spectrum *spectrum, const char *path);
+
+int spectrum_start_server(struct spectrum *sp);
 
 string_t *sp_lua_tolstring(lua_State *L, int index);
 int sp_stage_lua_call(lua_State *L, const char *name);
