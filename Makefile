@@ -8,6 +8,7 @@ objects += src/spectrum.o
 objects += src/util.o
 objects += src/server.o
 objects += src/client.o
+objects += src/splua.o
 
 target=spectrum
 lua=luajit/src/libluajit.a

@@ -45,38 +45,8 @@ static void record_destory(struct record *record)
 }
 
 
-static struct item *record_vars_get(struct record *record, string_t *s)
-{
-    struct item *item;
-    item = record->vars;
-    while(item)
-    {
-        if ((item->name->l == s->l) && (0 == strncmp(item->name->s, s->s, s->l)))
-            return item;
-        item = item->next;
-    }
-
-    return NULL;
-}
 
 
-static void *record_vars_append(struct record *record, enum var_type type, unsigned int size)
-{
-    struct item *var;
-    var = Malloc(sizeof(*var));
-    if (NULL == record->vars)
-    {
-        record->vars = var;
-    }
-    else{
-        record->vars_tail->next = var;
-    }
-    var->type = type;
-
-    record->vars_tail = var;
-    var->next = NULL;
-    return var;
-}
 
 struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
 {
@@ -159,160 +129,40 @@ void *record_reads(void *_spt)
     return NULL;
 }
 
-static inline void record_lua_spt_set(lua_State *L, struct sp_thread *spt)
+
+struct item *record_vars_get(struct record *record, string_t *s)
 {
-    lua_pushlightuserdata(L, spt);
-    lua_setglobal(L, "__sp_thread");
-}
-
-static inline struct sp_thread *record_lua_spt_get(lua_State *L)
-{
-    struct sp_thread *spt;
-
-    lua_getglobal(L, "__sp_thread");
-    spt = lua_touserdata(L, -1);
-    lua_pop(L, 1);
-
-    return spt;
-}
-
-
-
-static int record_lua_drop(lua_State *L)
-{
-    struct sp_thread *spt;
-    spt = record_lua_spt_get(L);
-
-    if (NULL == spt) {
-        return luaL_error(L, "no request object found");
-    }
-
-    spt->flag_drop = 1;
-
-    return 0;
-}
-
-
-static int record_lua_var_get(lua_State *L)
-{
-    struct record *record;
     struct item *item;
-    struct sp_thread *spt;
-    string_t s;
-    spt = record_lua_spt_get(L);
-
-    if (NULL == spt) {
-        return luaL_error(L, "no request object found");
-    }
-    record = spt->current;
-
-    s.s = (char *)lua_tolstring(L, -1, &s.l);
-
-    item = record_vars_get(record, &s);
-    if (!item)
-        return 0;
-
-    switch(item->type)
+    item = record->vars;
+    while(item)
     {
-        case VAR_TYPE_STR:
-            lua_pushlstring(L, item->v.s.s, item->v.s.l);
-            return 1;
-        default:
-            return 0;
-
+        if ((item->name->l == s->l) && (0 == strncmp(item->name->s, s->s, s->l)))
+            return item;
+        item = item->next;
     }
+
+    return NULL;
 }
 
-static int record_lua_append(lua_State *L)
+
+void *record_vars_append(struct record *record, enum var_type type, unsigned int size)
 {
-    struct record *record;
-    struct item *item;
-    int value_type;
-    struct sp_thread *spt;
-    string_t *s;
-    string_t *v;
-    const char *msg;
-    spt = record_lua_spt_get(L);
-
-    if (NULL == spt) {
-        return luaL_error(L, "no request object found");
-    }
-
-    record = spt->current;
-
-    if (lua_type(L, 1) != LUA_TSTRING) {
-        return luaL_error(L, "bad variable name");
-    }
-
-
-    s = sp_lua_tolstring(L, 1);
-
-    value_type = lua_type(L, 2);
-    switch (value_type) {
-    case LUA_TNUMBER:
-    case LUA_TSTRING:
-        v = sp_lua_tolstring(L, 2);
-
-        item = record_vars_append(record, VAR_TYPE_STR, 0);
-        item->name = s;
-        item->v.s = *v;
-        break;
-
-    case LUA_TNIL:
-        /* undef the variable */
-        return 0;
-
-    default:
-        msg = lua_pushfstring(L, "string, number, or nil expected, "
-                              "but got %s", lua_typename(L, value_type));
-        return luaL_argerror(L, 1, msg);
-    }
-
-    return 0;
-}
-
-int record_lua_init(struct sp_thread *spt)
-{
-    spt->L = luaL_newstate();
-    luaL_openlibs(spt->L);
-
-    lua_createtable(spt->L, 0 /* narr */, 116 /* nrec */);    /* spt.* */
-
-    lua_newtable(spt->L);    /* sp.record */
-
-    lua_newtable(spt->L);    /* sp.record.vars */
-
-    lua_createtable(spt->L, 0, 2 /* nrec */); /* metatable for .var */
-
-    lua_pushcfunction(spt->L, record_lua_var_get);
-    lua_setfield(spt->L, -2, "__index");
-
-    lua_setmetatable(spt->L, -2);
-
-    lua_setfield(spt->L, -2, "vars");
-
-    lua_pushcfunction(spt->L, record_lua_append);
-    lua_setfield(spt->L, -2, "append");
-
-    lua_pushcfunction(spt->L, record_lua_drop);
-    lua_setfield(spt->L, -2, "drop");
-
-    lua_setfield(spt->L, -2, "record");
-
-    lua_setglobal(spt->L, "sp");
-
-    record_lua_spt_set(spt->L, spt);
-
-    if (0 != luaL_dofile(spt->L, "spectrum.lua"))
+    struct item *var;
+    var = Malloc(sizeof(*var));
+    if (NULL == record->vars)
     {
-        printf("dofile `%s' err: %s\n", "spectrum.lua",
-                lua_tostring(spt->L, -1));
-        lua_pop(spt->L, 1);
-        return -1;
+        record->vars = var;
     }
+    else{
+        record->vars_tail->next = var;
+    }
+    var->type = type;
 
-    return 0;
+    record->vars_tail = var;
+    var->next = NULL;
+    return var;
 }
+
 
 void *record_iter(void *_)
 {

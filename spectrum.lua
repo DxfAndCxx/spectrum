@@ -7,9 +7,9 @@
 --
 --
 function spectrum_config()
-    sp.file_log = 't/ngx_logs'
+    sp.opt.file_log = 't/ngx_logs'
     --sp.file_log = '/home/vagrant/tmp/test.log'
-    sp.file_pattern = 't/pattern'
+    sp.opt.file_pattern = 't/pattern'
 end
 
 function spectrum_record_read()

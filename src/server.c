@@ -17,44 +17,11 @@
 #include "spectrum.h"
 
 
-static int spectrum_lua_var_set(lua_State *L)
-{
-    struct spectrum *sp;
-    string_t *field;
-    string_t *value;
-
-    lua_getglobal(L, "__sp");
-    sp = lua_touserdata(L, -1);
-    lua_pop(L, 1);
-
-    field = sp_lua_tolstring(L, 2);
-    value = sp_lua_tolstring(L, 3);
-
-    if (0 == strncmp("file_log", field->s, field->l))
-    {
-        sp->file_log = value->s;
-        debug("sp.file_log = %s\n", sp->file_log);
-        return 0;
-    }
-
-    if (0 == strncmp("file_pattern", field->s, field->l))
-    {
-        sp->file_pattern = value->s;
-        debug("sp.file_pattern = %s\n", sp->file_pattern);
-        return 0;
-    }
-    return 0;
-}
 
 
 static int spectrum_lua_init(struct spectrum *sp)
 {
 
-    if (0 != access(sp->file_rc, R_OK))
-    {
-        printf("cannot access `%s'\n", sp->file_rc);
-        return -1;
-    }
 
     sp->L = luaL_newstate();
     luaL_openlibs(sp->L);
@@ -63,8 +30,6 @@ static int spectrum_lua_init(struct spectrum *sp)
 
     lua_createtable(sp->L, 0, 2 /* nrec */); /* metatable for .var */
 
-    lua_pushcfunction(sp->L, spectrum_lua_var_set);
-    lua_setfield(sp->L, -2, "__newindex");
 
     lua_setmetatable(sp->L, -2);
 
@@ -153,7 +118,9 @@ static int spectrum_recod_reads(struct spectrum *sp)
     for (i=0; i < sp->thread_num; ++i)
     {
         spt = sp->threads + i;
-        record_lua_init(spt);
+        spt->L = splua_init(sp, spt);
+        if (!spt->L)
+            return -1;
         if (0 != pthread_create(&spt->tid, 0, record_reads, spt))
         {
             printf("create thread `%d' fail\n", i);
@@ -194,7 +161,9 @@ static void spectrum_recod_iter(struct spectrum *sp)
     for (i=0; i < sp->thread_num; ++i)
     {
         spt = sp->threads + i;
-        record_lua_init(spt);
+        spt->L = splua_init(sp, spt);
+        if (!spt->L)
+            return;
         if (0 != pthread_create(&spt->tid, 0, record_iter, spt))
         {
             printf("create thread `%d' fail\n", i);
@@ -298,7 +267,9 @@ int spectrum_start_server(struct spectrum *sp)
         return -1;
     }
 
-    if (0 != spectrum_lua_init(sp)) return -1;
+    sp->L = splua_init(sp, sp);
+
+    if (!sp->L) return -1;
 
     sp_stage_lua_call(sp->L, "spectrum_config");
 
@@ -308,6 +279,10 @@ int spectrum_start_server(struct spectrum *sp)
                 "of spectrum.lua\n");
         return -1;
     }
+
+    loginfo("Pattern File: %s\n", sp->file_pattern);
+    loginfo("Log File: %s\n", sp->file_log);
+
 
     if (pattern_compile(sp, sp->file_pattern))
     {

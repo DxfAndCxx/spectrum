@@ -23,6 +23,7 @@
 
 #define debug
 #define logerr printf
+#define loginfo printf
 
 enum var_type{
     VAR_TYPE_STR=0,
@@ -135,9 +136,10 @@ struct spectrum{
 };
 
 
-int record_lua_init(struct sp_thread *spt);
 void *record_reads(void *);
 void *record_iter(void *_);
+void *record_vars_append(struct record *record, enum var_type type, unsigned int size);
+struct item *record_vars_get(struct record *record, string_t *s);
 
 int pattern_compile(struct spectrum *spectrum, const char *path);
 
@@ -146,6 +148,8 @@ int spectrum_start_client(struct spectrum *sp);
 
 string_t *sp_lua_tolstring(lua_State *L, int index);
 int sp_stage_lua_call(lua_State *L, const char *name);
+
+lua_State *splua_init(struct spectrum *sp, void *data);
 
 #endif
 
