@@ -133,6 +133,7 @@ struct spectrum{
     int option_work_as_server;
     int option_server_cycle;
     int option_server_port;
+    int option_nomatch_output;
     const char *option_server_host;
     const char *option_client_cmd;
 

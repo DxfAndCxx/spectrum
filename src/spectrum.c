@@ -97,6 +97,13 @@ int main(int argc, const char **argv)
 
     if (0 != spectrum_options(sp, argc, argv)) return -1;
 
+    sp->L = splua_init(sp, sp);
+    if (!sp->L) return -1;
+
+    sp_stage_lua_call(sp->L, "spectrum_config");
+
+    if (0 != spectrum_options(sp, argc, argv)) return -1;
+
     if (sp->option_work_as_server)
     {
         return spectrum_start_server(sp);

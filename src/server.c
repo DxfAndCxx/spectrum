@@ -270,12 +270,6 @@ static int spectrum_server_cycle(struct spectrum *sp)
 
 int spectrum_start_server(struct spectrum *sp)
 {
-    sp->L = splua_init(sp, sp);
-
-    if (!sp->L) return -1;
-
-    sp_stage_lua_call(sp->L, "spectrum_config");
-
     if (!sp->file_log || !sp->file_pattern)
     {
         printf("should set file_log and file_pattern in spectrum_config "

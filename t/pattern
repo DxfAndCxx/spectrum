@@ -1,3 +1,4 @@
+#https://www.debuggex.com/
                               :^
 remote_addr                   :[\d.]+
                               : -[ ]
@@ -17,9 +18,9 @@ server_protocol               :[^"]+
 status                        :\d+
                               :[ ]
 body_bytes_sent               :\d+
-                              :[ ]"[^"]+"[ ]
-                              :"[^"]+"\s"[^"]+" \w+[ ]
-x_request_id                  :\w+
+                              :[ ]"[^"]*"[ ]
+                              :"[^"]*"\s"[^"]*" [^ ]+[ ]
+x_request_id                  :[^ ]+
                               :[ ]
 request_time                  :[\.\d]+
                               :[ ]"

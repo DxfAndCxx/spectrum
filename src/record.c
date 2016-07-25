@@ -48,7 +48,7 @@ static void record_destory(struct record *record)
 
 
 
-struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
+static int record_read(struct sp_thread *spt, const char *src, size_t len)
 {
     int rc, i;
     struct item *item;
@@ -66,15 +66,15 @@ struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
     if (rc < 0) {                     //如果没有匹配，返回错误信息
         if (rc == PCRE_ERROR_NOMATCH){
             spt->record_nomatch_num += 1;
+            if (spt->sp->option_nomatch_output)
+                loginfo("%.*s\n", (int)len, src);
         }
         else{
             loginfo("Matching error %d\n", rc);
             spt->record_errmatch_num += 1;
         }
-        return NULL;
+        return 0;
     }
-
-    printf("pcre exec rc: %d\n", rc);
 
     record = record_new();
     for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
@@ -85,13 +85,16 @@ struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
     }
 
     spt->current = record;
-    sp_stage_lua_call(spt->L, "spectrum_record_read");
+    if (sp_stage_lua_call(spt->L, "spectrum_record_read"))
+    {
+        return -1;
+    }
 
     if (spt->flag_drop)
     {
         spt->flag_drop = 0;
         record_destory(record);
-        return NULL;
+        return 0;
     }
 
     spt->record_num += 1;
@@ -103,7 +106,7 @@ struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
     else{
         spt->record_tail = spt->record = record;
     }
-    return record;
+    return 0;
 }
 
 
@@ -119,13 +122,20 @@ void *record_reads(void *_spt)
     {
         if ('\n' == *e)
         {
-            record_read(spt, s, e - s);
+            if (record_read(spt, s, e - s))
+            {
+                return NULL;
+            }
             s = e + 1;
         }
         ++e;
     }
     loginfo("Records Match: %lu NoMatch: %lu ErrMatch: %lu\n",
             spt->record_num, spt->record_nomatch_num, spt->record_errmatch_num);
+    if (sp_stage_lua_call(spt->L, "spectrum_record_read_end"))
+    {
+        return NULL;
+    }
 
     return NULL;
 }
