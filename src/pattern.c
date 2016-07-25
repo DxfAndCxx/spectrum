@@ -25,18 +25,28 @@ struct pattern_line{
 };
 
 
-static int read_one_pattern(struct pattern_line *line, const char *l)
+static int read_one_pattern(struct pattern_line *line, const char *l, int linenu)
 {
     const char *split;
     const char *s;
+    const char *origin_line;
+
+    origin_line = l;
+    while (' ' == *l || '\t' == *l) ++l;// skip white char in the line head
 
     s = l;
-    while (*s != '\n' && *s != 0) ++s;
+    while (*s != '\n' && *s != 0) ++s; // get the end
     line->end = s;
+
+    if (line->end - l < 2) return -1; // ignore
+    if ('#' == *l) return -1; // ignore
 
     split = l;
     while (*split != ':' && split < line->end) ++split;
-    if (':' != *split) return -1; // not found :
+    if (':' != *split){
+        logerr("Pattern Err: %d not found split char [:]\n", linenu);
+        return -1; // not found :
+    }
 
     if (line->end - split < 2)
         return -2; // pattern is empty
@@ -46,23 +56,18 @@ static int read_one_pattern(struct pattern_line *line, const char *l)
 
     line->name = NULL;
 
+    if (':' == *l) return 0;
+
+    line->name = l;
+    line->name_len = split - line->name;
+
     s = l;
     while (s < split)
     {
-        if (!line->name)
+        if (*s == ' ' || *s == '\t')
         {
-            if (*s != ' ' && *s != '\t')
-            {
-                line->name = s;
-                line->name_len = split - line->name;
-            }
-        }
-        else{
-            if (*s == ' ' || *s == '\t')
-            {
-                line->name_len = s - line->name;
-                break;
-            }
+            line->name_len = s - line->name;
+            break;
         }
         ++s;
     }
@@ -101,9 +106,13 @@ static int read_pattern(struct spectrum *spectrum)
 
     while (*start)
     {
-        res = read_one_pattern(&pl, start);
+        ++line_number;
+        res = read_one_pattern(&pl, start, line_number);
+
         if (res < 0)
-            goto end;
+            return -1;
+
+        if (res) goto end;
 
         if (pl.name) *pos++ = '(';
 
@@ -121,7 +130,6 @@ static int read_pattern(struct spectrum *spectrum)
 end:
         if (0 == *pl.end) break;
         start = pl.end + 1;
-        ++line_number;
     }
     return 0;
 }
@@ -139,7 +147,7 @@ int pattern_compile(struct spectrum *sp, const char *path)
         return -1;
     }
 
-    read_pattern(sp);
+    if (!read_pattern(sp)) return -1;
 
     printf("Pattern: /%s/\n", sp->pattern);
 

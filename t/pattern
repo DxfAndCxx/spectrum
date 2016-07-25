@@ -1,16 +1,41 @@
                 :^
-ip              :[\d.]+
-                : - - \[
-time            :[^\]]+
+remote_addr     :[\d.]+
+                : -[ ]
+remote_user     :[^ ]+
+                : \[
+time_local      :[^\]]+
                 :\] "
-url             :[^"]+
+request_method  :\w+
+                :[ ]
+scheme          :\w+
+                :://
+http_host       :[^/]+
+url             :[^ ]+
+                :[ ]
+server_protocol :[^"]+
                 :"[ ]
 status          :\d+
                 :[ ]
 body_bytes_sent  :\d+
-                 :[ ]"[^"]+"\s"[^"]+"\s"[^"]+" \w+[ ]
+                 :[ ]"[^"]+"[ ]
+                 :"[^"]+"\s"[^"]+" \w+[ ]
 x_request_id     :\w+
                  :[ ]
 request_time     :[\.\d]+
+                 :[ ]"
+upstream_http_cache_control:[^"]+
+                 :"[ ]"
+upstream_http_x_source:[^"]+
+                 :"[ ]"
+cache_status:[^"]+
 
 
+#'$remote_addr - $remote_user [$time_local] '
+#    '"$request_method $scheme://$http_host$request_uri $server_protocol" '
+#    '$status $body_bytes_sent "$http_referer" "$http_user_agent" '
+#    '"$sent_http_content_type" $domain_type $http_x_request_id $request_time '
+#    '"$upstream_http_cache_control" "$upstream_http_x_source" '
+#    '"$cache_status" "$upstats_dynamic" "$upstream_addr" "$upstream_status" '
+#    '"$upstream_response_time" "$upstream_response_length" $upstream_http_age '
+#    '$uptype $upage "$sent_http_via" $first_byte_time '
+#    '"$upstream_http_x_slice_size"';

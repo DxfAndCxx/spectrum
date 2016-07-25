@@ -309,7 +309,7 @@ int spectrum_start_server(struct spectrum *sp)
         return -1;
     }
 
-    if (0 != pattern_compile(sp, sp->file_pattern))
+    if (pattern_compile(sp, sp->file_pattern))
     {
         printf("pattern_compile fail\n");
         return -1;
