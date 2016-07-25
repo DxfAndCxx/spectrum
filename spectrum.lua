@@ -13,25 +13,12 @@ function spectrum_config()
 end
 
 function spectrum_record_read()
-    print("********************************spectrum_record_read")
-
-    local vars_names = {"remote_addr",
-    "remote_user",
-    "time_local",
-    "request_method",
-    "scheme",
-    "http_host",
-    "url",
-    "server_protocol",
-    "status",
-    "body_bytes_sent",
-    "x_request_id",
-    "request_time"}
-
-    for _, k in ipairs(vars_names) do
-        print(k, '\t\t\t\t: ', sp.record.vars[k])
+    for _, v in ipairs(sp.pattern.fields) do
+        print(v, '\t\t\t\t: ', sp.record.vars[v])
     end
-    print("********************************spectrum_record_read")
+
+
+
 end
 
 

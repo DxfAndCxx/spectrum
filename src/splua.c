@@ -151,6 +151,43 @@ static int spectrum_lua_var_set(lua_State *L)
 }
 
 
+static int spectrum_lua_pattern_index(lua_State *L)
+{
+    struct spectrum *sp;
+    struct sp_thread *spt;
+    string_t *field;
+    int i;
+    string_t *name;
+
+    spt = splua_get_data(L);
+    if (NULL == spt) {
+        return luaL_error(L, "no request object found");
+    }
+
+    field = sp_lua_tolstring(L, 2);
+    if (!strncmp("fields", field->s, field->l))
+    {
+        sp = spt->sp;
+
+        lua_newtable(L);
+
+        name = sp->names;
+        i = 1;
+        while (name->s)
+        {
+            lua_pushlstring(L, name->s, name->l);
+            lua_rawseti(L, -2, i);
+            ++i;
+            ++name;
+        }
+
+        return 1;
+    }
+
+    return 0;
+}
+
+
 static void splua_init_set_sp(lua_State *L)
 {
     // create sp
@@ -169,6 +206,25 @@ static void splua_init_set_sp(lua_State *L)
     lua_setmetatable(L, -2);
 
     lua_setfield(L, -2, "opt");
+
+    lua_settop(L, 0);
+}
+
+
+static void splua_init_set_pattern(lua_State *L)
+{
+    // create sp metatable
+    lua_getglobal(L, "sp");
+    lua_newtable(L);    /* sp.vars */
+
+    lua_createtable(L, 0, 2 /* nrec */); /* metatable for .var */
+
+    lua_pushcfunction(L, spectrum_lua_pattern_index);
+    lua_setfield(L, -2, "__index");
+
+    lua_setmetatable(L, -2);
+
+    lua_setfield(L, -2, "pattern");
 
     lua_settop(L, 0);
 }
@@ -227,6 +283,7 @@ lua_State *splua_init(struct spectrum *sp, void *data)
 
 
     splua_init_set_sp(L);
+    splua_init_set_pattern(L);
     splua_init_set_record(L);
 
 

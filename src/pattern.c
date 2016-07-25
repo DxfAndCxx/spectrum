@@ -77,7 +77,7 @@ static int read_one_pattern(struct pattern_line *line, const char *l, int linenu
 
 
 
-static int read_pattern(struct spectrum *spectrum)
+static int read_pattern(struct spectrum *sp)
 {
     const char *start;
     char *pos;
@@ -87,21 +87,21 @@ static int read_pattern(struct spectrum *spectrum)
     int res;
 
     int count = 2;
-    start = spectrum->raw_pattern->buf;
+    start = sp->raw_pattern->buf;
     while (*start)
     {
         if ('\n' == *start) ++count;
         ++start;
     }
 
-    spectrum->pattern = Malloc(spectrum->raw_pattern->size);
-    spectrum->names =  Malloc(sizeof(struct string) * count);
-    memset(spectrum->pattern, 0, spectrum->raw_pattern->size);
-    memset(spectrum->names, 0, sizeof(struct string) * count);
+    sp->pattern = Malloc(sp->raw_pattern->size);
+    sp->names =  Malloc(sizeof(struct string) * count);
+    memset(sp->pattern, 0, sp->raw_pattern->size);
+    memset(sp->names, 0, sizeof(struct string) * count);
     name_index = 0;
 
-    start = spectrum->raw_pattern->buf;
-    pos = spectrum->pattern;
+    start = sp->raw_pattern->buf;
+    pos = sp->pattern;
 
 
     while (*start)
@@ -123,8 +123,8 @@ static int read_pattern(struct spectrum *spectrum)
         {
             *pos++ = ')';
 
-            spectrum->names[name_index].l = pl.name_len;
-            spectrum->names[name_index].s = (char *)pl.name;
+            sp->names[name_index].l = pl.name_len;
+            sp->names[name_index].s = (char *)pl.name;
             ++name_index;
         }
 end:
