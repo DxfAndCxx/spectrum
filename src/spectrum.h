@@ -37,7 +37,7 @@ struct string{
 };
 
 struct number{
-    float n;
+    double n;
 };
 
 typedef struct string string_t;
@@ -53,41 +53,23 @@ struct item{
     struct item *next;
 };
 
+typedef struct dict record_t;
+typedef struct item iterm_t;
 
-struct item_number{
-    struct string *name;
-    struct item_number *next;
-};
-
-struct item_array{
-    struct string *name;
-    struct item_array *next;
-    unsigned short size;
-    struct number n[];
-};
-
-
-struct record{
-//struct item_array *array;
-//    struct item_array *array_tail;
-//
-//    struct item_number *number;
-//    struct item_number *number_tail;
-//
-//    struct item_string *string;
-//    struct item_string *string_tail;
-
+struct dict{
     struct item *vars;
     struct item *vars_tail;
 
-    struct record *next;
+    record_t *next;
 };
 
-struct sp_thread{
-    struct record *current;
 
-    struct record *record;
-    struct record *record_tail;
+
+
+struct sp_thread{
+    record_t *current;
+    record_t *record;
+    record_t *record_tail;
 
     size_t records_num;
     size_t records_num_nomatch;
@@ -103,6 +85,9 @@ struct sp_thread{
 
     int *ovector;
     int ovector_n;
+
+    iterm_t *summary_head;
+    iterm_t *summary_tail;
 
     struct spectrum *sp;
     bool flag_drop;
@@ -145,8 +130,8 @@ struct spectrum{
 
 void *record_reads(void *);
 void *record_iter(void *_);
-void *record_vars_append(struct record *record, enum var_type type, unsigned int size);
-struct item *record_vars_get(struct record *record, string_t *s);
+void *record_vars_append(record_t *record, enum var_type type, unsigned int size);
+struct item *record_vars_get(record_t *record, string_t *s);
 
 int pattern_compile(struct spectrum *spectrum, const char *path);
 
@@ -155,6 +140,7 @@ int spectrum_start_client(struct spectrum *sp);
 
 string_t *sp_lua_tolstring(lua_State *L, int index);
 int sp_stage_lua_call(lua_State *L, const char *name);
+int sp_stage_lua_callx(lua_State *L, const char *name, int nargs, int nresults);
 
 lua_State *splua_init(struct spectrum *sp, void *data);
 

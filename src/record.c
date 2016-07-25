@@ -16,9 +16,9 @@
 static inline void record_lua_spt_set(lua_State *L, struct sp_thread *sp);
 static inline struct sp_thread *record_lua_spt_get(lua_State *L);
 
-static struct record *record_new()
+static record_t *record_new()
 {
-    struct record *record;
+    record_t *record;
     record = Malloc(sizeof(*record));
 
     record->next = NULL;
@@ -29,7 +29,7 @@ static struct record *record_new()
 
 
 //just can be destory in record_reads
-static void record_destory(struct record *record)
+static void record_destory(record_t *record)
 {
     struct item *item;
     struct item *t;
@@ -52,7 +52,7 @@ static int record_read(struct sp_thread *spt, const char *src, size_t len)
 {
     int rc, i;
     struct item *item;
-    struct record *record;
+    record_t *record;
 
     rc = pcre_exec(spt->sp->re,            // code, 输入参数，用pcre_compile编译好的正则表达结构的指针
             NULL,          // extra, 输入参数，用来向pcre_exec传一些额外的数据信息的结构的指针
@@ -142,7 +142,7 @@ void *record_reads(void *_spt)
 }
 
 
-struct item *record_vars_get(struct record *record, string_t *s)
+struct item *record_vars_get(record_t *record, string_t *s)
 {
     struct item *item;
     item = record->vars;
@@ -157,7 +157,7 @@ struct item *record_vars_get(struct record *record, string_t *s)
 }
 
 
-void *record_vars_append(struct record *record, enum var_type type, unsigned int size)
+void *record_vars_append(record_t *record, enum var_type type, unsigned int size)
 {
     struct item *var;
     var = Malloc(sizeof(*var));
@@ -179,7 +179,7 @@ void *record_vars_append(struct record *record, enum var_type type, unsigned int
 void *record_iter(void *_)
 {
     struct sp_thread *spt;
-    struct record *record;
+    record_t *record;
 
     spt = _;
     record = spt->record;
@@ -190,6 +190,32 @@ void *record_iter(void *_)
         record = record->next;
     }
 
-    sp_stage_lua_call(spt->L, "spectrum_record_iter_end");
+    if(sp_stage_lua_callx(spt->L, "spectrum_summary", 0, 1)) return NULL;
+
+    if (!lua_istable(spt->L, -1)) return NULL;//ignore
+
+
+    iterm_t *iterm;
+    lua_pushnil(spt->L);
+    while (lua_next(spt->L, -2))
+    {
+        if (lua_isnumber(spt->L, -1))
+        {
+            iterm = Malloc(sizeof(*iterm));
+            iterm->name = sp_lua_tolstring(spt->L, -2);
+            iterm->v.n.n = lua_tonumber(spt->L, -1);
+            iterm->next = NULL;
+            if (spt->summary_tail)
+            {
+                spt->summary_tail->next = iterm;
+                spt->summary_tail = iterm;
+            }
+            else{
+                spt->summary_head = spt->summary_tail = iterm;
+            }
+        }
+        lua_pop(spt->L, 1);
+    }
+
     return 0;
 }

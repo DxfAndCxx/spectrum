@@ -26,12 +26,12 @@ string_t *sp_lua_tolstring(lua_State *L, int index)
     return ss;
 }
 
-int sp_stage_lua_call(lua_State *L, const char *name)
+int sp_stage_lua_callx(lua_State *L, const char *name, int nargs, int nresults)
 {
     lua_getglobal(L, name);
     if (lua_isfunction(L, -1))
     {
-        if (0 != lua_pcall(L, 0, 0, 0))
+        if (0 != lua_pcall(L, nargs, nresults, 0))
         {
             printf("error running function `%s': %s\n", name,
                     lua_tostring(L, -1));
@@ -41,10 +41,16 @@ int sp_stage_lua_call(lua_State *L, const char *name)
         return 0;
     }
 
-//    printf("global `%s' is not function\n", name);
     lua_pop(L, 1);
     return -1;
 }
+
+int sp_stage_lua_call(lua_State *L, const char *name)
+{
+    return sp_stage_lua_callx(L, name, 0, 0);
+}
+
+
 
 
 

@@ -42,7 +42,7 @@ static int record_lua_drop(lua_State *L)
 
 static int record_lua_var_get(lua_State *L)
 {
-    struct record *record;
+    record_t *record;
     struct item *item;
     struct sp_thread *spt;
     string_t s;
@@ -72,7 +72,7 @@ static int record_lua_var_get(lua_State *L)
 
 static int record_lua_append(lua_State *L)
 {
-    struct record *record;
+    record_t *record;
     struct item *item;
     int value_type;
     struct sp_thread *spt;

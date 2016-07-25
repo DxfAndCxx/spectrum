@@ -60,9 +60,14 @@ function spectrum_record_read()
 --    print("retry: ", vars.retry, ' upstream_addr_1: ', vars.upstream_addr_1)
 end
 
-function spectrum_record_read_end()
-    print("records num: ",  sp.num, "droped: ", sp.num_droped,
-            "nomatch: ", sp.num_nomatch, "num_errmatch: ", sp.num_errmatch);
+function spectrum_summary()
+    local t= {num = sp.num,
+        droped = sp.num_droped,
+        nomatch = sp.num_nomatch,
+        num_errmatch =  sp.num_errmatch,
+        test = 2.3
+    };
+    return t;
 end
 
 

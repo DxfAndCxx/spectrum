@@ -153,12 +153,27 @@ static int spectrum_recod_reads(struct spectrum *sp)
     return 0;
 }
 
+static iterm_t *spectrum_iterm_get(struct sp_thread *spt, string_t *s)
+{
+    iterm_t *iterm;
+    iterm = spt->summary_head;
+    while (iterm)
+    {
+        if (s->l == iterm->name->l && !strncmp(iterm->name->s, s->s, s->l))
+            return iterm;
+        iterm = iterm->next;
+    }
+    return NULL;
+
+}
 
 
 static void spectrum_recod_iter(struct spectrum *sp)
 {
     int i;
     struct sp_thread *spt;
+    iterm_t *iterm1;
+    iterm_t *iterm2;
 
     debug("create %d threads\n", sp->thread_num);
     for (i=0; i < sp->thread_num; ++i)
@@ -182,6 +197,34 @@ static void spectrum_recod_iter(struct spectrum *sp)
 //            printf("thread %d finish\n", i);
             spt->tid = 0;
         }
+    }
+
+    if (sp->thread_num > 1)
+    {
+        for (i=1; i < sp->thread_num; ++i)
+        {
+            iterm1 = sp->threads[i].summary_head;
+            while (iterm1)
+            {
+                iterm2 = spectrum_iterm_get(sp->threads, iterm1->name);
+                if (iterm2)
+                    iterm2->v.n.n += iterm1->v.n.n;
+                else{
+                    sp->threads[0].summary_tail->next = iterm1;
+                    sp->threads[0].summary_tail = iterm1;
+                }
+
+                iterm1 = iterm1->next;
+            }
+        }
+    }
+    iterm1 = sp->threads[0].summary_head;
+    while(iterm1)
+    {
+        printf("%.*s = %f\n", (int)iterm1->name->l,
+                iterm1->name->s, iterm1->v.n.n);
+        iterm1 = iterm1->next;
+
     }
 }
 
