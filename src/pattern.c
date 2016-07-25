@@ -38,13 +38,13 @@ static int read_one_pattern(struct pattern_line *line, const char *l, int linenu
     while (*s != '\n' && *s != 0) ++s; // get the end
     line->end = s;
 
-    if (line->end - l < 2) return -1; // ignore
-    if ('#' == *l) return -1; // ignore
+    if (line->end - l < 2) return 1; // ignore
+    if ('#' == *l) return 1; // ignore
 
     split = l;
     while (*split != ':' && split < line->end) ++split;
     if (':' != *split){
-        logerr("Pattern Err: %d not found split char [:]\n", linenu);
+        logerr("Pattern Err: linenu: %d not found split char [:]\n", linenu);
         return -1; // not found :
     }
 
@@ -147,7 +147,7 @@ int pattern_compile(struct spectrum *sp, const char *path)
         return -1;
     }
 
-    if (!read_pattern(sp)) return -1;
+    if (read_pattern(sp)) return -1;
 
     printf("Pattern: /%s/\n", sp->pattern);
 
