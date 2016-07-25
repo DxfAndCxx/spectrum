@@ -171,7 +171,7 @@ static int spectrum_lua_pattern_index(lua_State *L)
 
         lua_newtable(L);
 
-        name = sp->names;
+        name = sp->fields;
         i = 1;
         while (name->s)
         {

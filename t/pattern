@@ -1,33 +1,54 @@
-                :^
-remote_addr     :[\d.]+
-                : -[ ]
-remote_user     :[^ ]+
-                : \[
-time_local      :[^\]]+
-                :\] "
-request_method  :\w+
-                :[ ]
-scheme          :\w+
-                :://
-http_host       :[^/]+
-url             :[^ ]+
-                :[ ]
-server_protocol :[^"]+
-                :"[ ]
-status          :\d+
-                :[ ]
-body_bytes_sent  :\d+
-                 :[ ]"[^"]+"[ ]
-                 :"[^"]+"\s"[^"]+" \w+[ ]
-x_request_id     :\w+
-                 :[ ]
-request_time     :[\.\d]+
-                 :[ ]"
-upstream_http_cache_control:[^"]+
-                 :"[ ]"
-upstream_http_x_source:[^"]+
-                 :"[ ]"
-cache_status:[^"]+
+                              :^
+remote_addr                   :[\d.]+
+                              : -[ ]
+remote_user                   :[^ ]+
+                              : \[
+time_local                    :[^\]]+
+                              :\] "
+request_method                :\w+
+                              :[ ]
+scheme                        :\w+
+                              :://
+http_host                     :[^/]+
+url                           :[^ ]+
+                              :[ ]
+server_protocol               :[^"]+
+                              :"[ ]
+status                        :\d+
+                              :[ ]
+body_bytes_sent               :\d+
+                              :[ ]"[^"]+"[ ]
+                              :"[^"]+"\s"[^"]+" \w+[ ]
+x_request_id                  :\w+
+                              :[ ]
+request_time                  :[\.\d]+
+                              :[ ]"
+upstream_http_cache_control   :[^"]+
+                              :"[ ]"
+upstream_http_x_source        :[^"]+
+                              :"[ ]"
+cache_status                  :[^"]+
+                              :"[ ]"[^"]*" "
+upstream_addr                 :[^"]+
+                              :"[ ]"
+upstream_status               :[^"]+
+                              :"[ ]"
+upstream_response_time        :[^"]+
+                              :"[ ]"
+upstream_response_length      :[^"]+
+                              :"[ ]
+upstream_http_age             :[^ ]+
+                              :[ ]
+uptype                        :[^ ]+
+                              :[ ]
+upage                         :[^ ]+
+                              :[ ]"
+sent_http_via                 :[^"]+
+                              :"[ ]
+first_byte_time               :[^ ]+
+                              :[ ]"
+upstream_http_x_slice_size    :[^"]+
+
 
 
 #'$remote_addr - $remote_user [$time_local] '

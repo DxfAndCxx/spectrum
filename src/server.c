@@ -75,6 +75,8 @@ static int spectrum_log_split(struct spectrum *sp)
     for (i=0; i < sp->thread_num; ++i)
     {
         sp->threads[i].sp = sp;
+        sp->threads[i].ovector_n = (sp->fields_n + 3) * 3;
+        sp->threads[i].ovector = Malloc(sizeof(int) * sp->threads[i].ovector_n);
     }
 
     // split log

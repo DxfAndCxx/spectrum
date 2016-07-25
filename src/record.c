@@ -50,7 +50,6 @@ static void record_destory(struct record *record)
 
 struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
 {
-    int ovector[OVECCOUNT * 3];
     int rc, i;
     struct item *item;
     struct record *record;
@@ -61,8 +60,8 @@ struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
             len,  // length, 输入参数， 要被用来匹配的字符串的指针
             0,             // startoffset, 输入参数，用来指定subject从什么位置开始被匹配的偏移量
             0,             // options, 输入参数， 用来指定匹配过程中的一些选项
-            ovector,       // ovector, 输出参数，用来返回匹配位置偏移量的数组
-            OVECCOUNT);    // ovecsize, 输入参数， 用来返回匹配位置偏移量的数组的最大大小
+            spt->ovector,       // ovector, 输出参数，用来返回匹配位置偏移量的数组
+            spt->ovector_n);    // ovecsize, 输入参数， 用来返回匹配位置偏移量的数组的最大大小
     // 返回值：匹配成功返回非负数，没有匹配返回负数
     if (rc < 0) {                     //如果没有匹配，返回错误信息
         if (rc == PCRE_ERROR_NOMATCH){
@@ -75,12 +74,14 @@ struct record *record_read(struct sp_thread *spt, const char *src, size_t len)
         return NULL;
     }
 
+    printf("pcre exec rc: %d\n", rc);
+
     record = record_new();
     for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
         item = record_vars_append(record, VAR_TYPE_STR, 0);
-        item->name = spt->sp->names + i - 1;
-        item->v.s.s = (char *)src + ovector[2*i];
-        item->v.s.l = ovector[2*i+1] - ovector[2*i];
+        item->name = spt->sp->fields + i - 1;
+        item->v.s.s = (char *)src + spt->ovector[2*i];
+        item->v.s.l = spt->ovector[2*i+1] - spt->ovector[2*i];
     }
 
     spt->current = record;

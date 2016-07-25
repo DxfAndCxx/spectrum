@@ -19,7 +19,6 @@
 
 #define Malloc malloc
 #define Free free
-#define OVECCOUNT 50
 
 #define debug
 #define logerr printf
@@ -101,6 +100,9 @@ struct sp_thread{
 
     pthread_t tid;
 
+    int *ovector;
+    int ovector_n;
+
     struct spectrum *sp;
     bool flag_drop;
 };
@@ -109,8 +111,9 @@ struct sp_thread{
 struct spectrum{
     struct sws_filebuf *raw_pattern;
     char               *pattern;
-    struct string      *names;
+    struct string      *fields;
     pcre               *re;
+    int                 fields_n;
 
     unsigned short thread_num;
     struct sp_thread *threads;

@@ -95,9 +95,9 @@ static int read_pattern(struct spectrum *sp)
     }
 
     sp->pattern = Malloc(sp->raw_pattern->size);
-    sp->names =  Malloc(sizeof(struct string) * count);
+    sp->fields =  Malloc(sizeof(struct string) * count);
     memset(sp->pattern, 0, sp->raw_pattern->size);
-    memset(sp->names, 0, sizeof(struct string) * count);
+    memset(sp->fields, 0, sizeof(struct string) * count);
     name_index = 0;
 
     start = sp->raw_pattern->buf;
@@ -123,14 +123,16 @@ static int read_pattern(struct spectrum *sp)
         {
             *pos++ = ')';
 
-            sp->names[name_index].l = pl.name_len;
-            sp->names[name_index].s = (char *)pl.name;
+            sp->fields[name_index].l = pl.name_len;
+            sp->fields[name_index].s = (char *)pl.name;
             ++name_index;
         }
 end:
         if (0 == *pl.end) break;
         start = pl.end + 1;
     }
+
+    sp->fields_n = name_index;
     return 0;
 }
 
