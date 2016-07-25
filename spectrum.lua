@@ -23,12 +23,12 @@ local retry_num = 0;
 
 function spectrum_record_read()
     local record = sp.record
-    local vars = sp.record.vars
+    local fields = sp.record.fields
 
-    local pos = vars.upstream_addr:find(',')
+    local pos = fields.upstream_addr:find(',')
 
-    local body_bytes_sent = tonumber(vars.body_bytes_sent)
-    local request_time = tonumber(vars.request_time)
+    local body_bytes_sent = tonumber(fields.body_bytes_sent)
+    local request_time = tonumber(fields.request_time)
 
     if body_bytes_sent < 1024 * 5 then
         record.drop()
@@ -50,10 +50,10 @@ function spectrum_record_read()
     if pos ~= nil then
         retry_num = retry_num + 1
         record.append("retry", '1')
-        record.append("upstream_addr_1", vars.upstream_addr:sub(1, pos))
+        record.append("upstream_addr_1", fields.upstream_addr:sub(1, pos))
     else
         record.append("retry", '0')
-        record.append("upstream_addr_1", vars.upstream_addr)
+        record.append("upstream_addr_1", fields.upstream_addr)
     end
 
 
@@ -61,8 +61,8 @@ function spectrum_record_read()
 end
 
 function spectrum_record_read_end()
-    print("record num: ",  record_num);
-    print("retry num: ", retry_num)
+    print("records num: ",  sp.num, "droped: ", sp.num_droped,
+            "nomatch: ", sp.num_nomatch, "num_errmatch: ", sp.num_errmatch);
 end
 
 

@@ -65,13 +65,13 @@ static int record_read(struct sp_thread *spt, const char *src, size_t len)
     // 返回值：匹配成功返回非负数，没有匹配返回负数
     if (rc < 0) {                     //如果没有匹配，返回错误信息
         if (rc == PCRE_ERROR_NOMATCH){
-            spt->record_nomatch_num += 1;
+            ++spt->records_num_nomatch;
             if (spt->sp->option_nomatch_output)
                 loginfo("%.*s\n", (int)len, src);
         }
         else{
             loginfo("Matching error %d\n", rc);
-            spt->record_errmatch_num += 1;
+            ++spt->records_num_errmatch;
         }
         return 0;
     }
@@ -93,11 +93,12 @@ static int record_read(struct sp_thread *spt, const char *src, size_t len)
     if (spt->flag_drop)
     {
         spt->flag_drop = 0;
+        ++spt->records_num_droped;
         record_destory(record);
         return 0;
     }
 
-    spt->record_num += 1;
+    ++spt->records_num;
     if (spt->record)
     {
         spt->record_tail->next = record;
@@ -130,8 +131,8 @@ void *record_reads(void *_spt)
         }
         ++e;
     }
-    loginfo("Records Match: %lu NoMatch: %lu ErrMatch: %lu\n",
-            spt->record_num, spt->record_nomatch_num, spt->record_errmatch_num);
+    //loginfo("Records Match: %lu NoMatch: %lu ErrMatch: %lu\n",
+    //        spt->record_num, spt->record_nomatch_num, spt->record_errmatch_num);
     if (sp_stage_lua_call(spt->L, "spectrum_record_read_end"))
     {
         return NULL;

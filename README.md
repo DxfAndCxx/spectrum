@@ -11,6 +11,13 @@ function is run at a thread, every thread has it's own lua state.
 ## sp
 This global var is the top value of spectrum;
 
+* num: the num of records in this thread
+* num\_droped: the num of droped records in this thread
+* num\_nomatch: the num of the not match records
+* num_errmatch: the num of err match in thie thread
+* threads: the num of all threads
+* time: time used for read logs and read reocrds
+
 ### sp.opt
 This is used to set the options. When everything is ok, event `spectrum_config`
 is called, so you can set the options in the function `spectrum_config`.
@@ -26,7 +33,7 @@ end
 ### sp.record
 `record` is the field of `sp`, it is pointed to the current record when the
 records ware readed. When every record is readed,  the event
-`spectrum_record_read` is called. You can read the fields by `sp.record.vars`,
+`spectrum_record_read` is called. You can read the fields by `sp.record.fields`,
 there fields is readonly. You just can append new fields, cannot the fields.
 Appends new field by `sp.record.append`.
 

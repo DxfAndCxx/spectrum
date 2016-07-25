@@ -89,9 +89,10 @@ struct sp_thread{
     struct record *record;
     struct record *record_tail;
 
-    size_t record_num;
-    size_t record_nomatch_num;
-    size_t record_errmatch_num;
+    size_t records_num;
+    size_t records_num_nomatch;
+    size_t records_num_errmatch;
+    size_t records_num_droped;
 
     const char *log;
     size_t loglen;
@@ -119,6 +120,8 @@ struct spectrum{
     struct sp_thread *threads;
 
     lua_State *L;
+
+    unsigned long time;
 
     const char *file_log;
     const char *file_pattern;

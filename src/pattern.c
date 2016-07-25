@@ -151,7 +151,7 @@ int pattern_compile(struct spectrum *sp, const char *path)
 
     if (read_pattern(sp)) return -1;
 
-    printf("Pattern: /%s/\n", sp->pattern);
+    debug("Pattern: /%s/\n", sp->pattern);
 
     sp->re = pcre_compile(sp->pattern,       // pattern, 输入参数，将要被编译的字符串形式的正则表达式
                       0,            // options, 输入参数，用来指定编译时的一些选项

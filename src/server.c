@@ -116,7 +116,7 @@ static int spectrum_recod_reads(struct spectrum *sp)
         return -1;
     }
 
-    printf("create %d threads\n", sp->thread_num);
+    debug("create %d threads\n", sp->thread_num);
     for (i=0; i < sp->thread_num; ++i)
     {
         spt = sp->threads + i;
@@ -140,15 +140,16 @@ static int spectrum_recod_reads(struct spectrum *sp)
         }
     }
 
+
+
     gettimeofday(&time_end, NULL);
-    int64_t t;
-    t = (time_end.tv_sec - time_start.tv_sec) * 1000000 +
+    sp->time = (time_end.tv_sec - time_start.tv_sec) * 1000000 +
         time_end.tv_usec - time_start.tv_usec;
 
-    printf("TimeSpace: %lds %ldms %ldmi\n", t / 1000000,
-            t % 1000000 / 1000,
-            t % 1000
-            );
+    //printf("TimeSpace: %lds %ldms %ldmi\n", t / 1000000,
+    //        t % 1000000 / 1000,
+    //        t % 1000
+    //        );
     return 0;
 }
 
@@ -159,7 +160,7 @@ static void spectrum_recod_iter(struct spectrum *sp)
     int i;
     struct sp_thread *spt;
 
-    printf("create %d threads\n", sp->thread_num);
+    debug("create %d threads\n", sp->thread_num);
     for (i=0; i < sp->thread_num; ++i)
     {
         spt = sp->threads + i;
@@ -242,6 +243,10 @@ static void spectrum_handle_cmd(struct spectrum *sp, const char *cmd)
 static int spectrum_server_cycle(struct spectrum *sp)
 {
     char buf[30];
+
+    if (!sp->option_server_cycle)
+        return 0;
+
     sp->server_fd = sws_net_server(sp->option_server_host,
             sp->option_server_port, false, 5);
 
@@ -277,8 +282,8 @@ int spectrum_start_server(struct spectrum *sp)
         return -1;
     }
 
-    loginfo("Pattern File: %s\n", sp->file_pattern);
-    loginfo("Log File: %s\n", sp->file_log);
+    debug("Pattern File: %s\n", sp->file_pattern);
+    debug("Log File: %s\n", sp->file_log);
 
     if (pattern_compile(sp, sp->file_pattern))
     {
