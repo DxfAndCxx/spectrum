@@ -16,9 +16,6 @@ function spectrum_record_read()
     for _, v in ipairs(sp.pattern.fields) do
         print(v, '\t\t\t\t: ', sp.record.vars[v])
     end
-
-
-
 end
 
 

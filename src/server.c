@@ -242,6 +242,17 @@ static void spectrum_handle_cmd(struct spectrum *sp, const char *cmd)
 static int spectrum_server_cycle(struct spectrum *sp)
 {
     char buf[30];
+    sp->server_fd = sws_net_server(sp->option_server_host,
+            sp->option_server_port, false, 5);
+
+    if (sp->server_fd < 0)
+    {
+        logerr("%s\n", geterr());
+        return -1;
+    }
+
+    loginfo("Start server at %s:%d\n", sp->option_server_host,
+            sp->option_server_port);
 
     while (sp->option_server_cycle)
     {
@@ -259,16 +270,6 @@ static int spectrum_server_cycle(struct spectrum *sp)
 
 int spectrum_start_server(struct spectrum *sp)
 {
-
-    sp->server_fd = sws_net_server(sp->option_server_host,
-            sp->option_server_port, false, 5);
-
-    if (sp->server_fd < 0)
-    {
-        logerr("%s\n", geterr());
-        return -1;
-    }
-
     sp->L = splua_init(sp, sp);
 
     if (!sp->L) return -1;
@@ -285,7 +286,6 @@ int spectrum_start_server(struct spectrum *sp)
     loginfo("Pattern File: %s\n", sp->file_pattern);
     loginfo("Log File: %s\n", sp->file_log);
 
-
     if (pattern_compile(sp, sp->file_pattern))
     {
         printf("pattern_compile fail\n");
@@ -293,8 +293,6 @@ int spectrum_start_server(struct spectrum *sp)
     }
 
     if (0 != spectrum_recod_reads(sp)) return -1;
-
-    sp->option_server_cycle = 1;
 
     return spectrum_server_cycle(sp);
 }

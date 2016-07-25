@@ -22,6 +22,7 @@ static struct spectrum *spectrum_init()
     sp->thread_num = sysconf(_SC_NPROCESSORS_ONLN);
     sp->option_server_port = 8991;
     sp->option_server_host = "127.0.0.1";
+    sp->option_server_cycle = 1;
 
 
     sp->file_rc = "spectrum.lua";
@@ -48,6 +49,8 @@ static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
         switch(*p)
         {
             case 's':
+                sp->option_server_cycle = 0;
+
             case 'S':
                 sp->option_work_as_server = 1;
                 break;
