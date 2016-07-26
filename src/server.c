@@ -68,7 +68,6 @@ static int spectrum_log_alloc(struct spectrum *sp, uint64_t uint64_total)
 
             if (spi.remain - spti.remain > 0)
             {
-                spti.remain = 0;
                 spti.log->v.s.s = (char *)spi.pos;
                 spi.pos += spti.remain;
 
@@ -79,6 +78,7 @@ static int spectrum_log_alloc(struct spectrum *sp, uint64_t uint64_total)
                 spti.log->v.s.l = spi.pos - spti.log->v.s.s;
                 spi.remain = spi.file->v.s.l - (spi.pos - spi.file->v.s.s);
 
+                spti.remain = 0;
                 continue;
             }
 
