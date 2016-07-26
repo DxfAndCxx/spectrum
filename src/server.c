@@ -70,6 +70,7 @@ static int spectrum_log_alloc(struct spectrum *sp, uint64_t uint64_total)
             {
                 spti.remain = 0;
                 spti.log->v.s.s = (char *)spi.pos;
+                spi.pos += spti.remain;
 
                 while ('\n' != *spi.pos && spi.pos - spi.file->v.s.s < spi.file->v.s.l)
                     ++spi.pos;
