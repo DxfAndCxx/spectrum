@@ -104,11 +104,12 @@ static uint64_t spectrum_open_log(struct spectrum *sp)
     {
         loginfo("open log file: %s\n", iterm->name->s);
         fd = open(iterm->name->s, O_RDONLY);
-        if (fd < -1)
+        if (fd < 0)
         {
             logerr("open file fial: %s\n", iterm->name->s);
             return 0;
         }
+
         if(-1 == fstat(fd, &st))
         {
             logerr("stat: %s", strerror(errno));
