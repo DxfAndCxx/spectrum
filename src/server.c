@@ -15,27 +15,134 @@
 #include <sys/wait.h>
 
 #include "spectrum.h"
+#include <sys/mman.h>
 
+
+static int spectrum_log_alloc(struct spectrum *sp, size_t size_total)
+{
+    struct {
+        const char *pos;
+        size_t remain;
+        size_t slice;
+        iterm_t *file;
+    } spi;
+
+    struct {
+        struct sp_thread *spt;
+
+        size_t remain;
+        iterm_t *log;
+        iterm_t **next;
+    } spti;
+    int i;
+
+    spi.slice = size_total / sp->thread_num;
+
+    spi.file = sp->file_logs;
+    spi.remain = spi.file->v.s.l;
+    spi.pos = spi.file->v.s.s;
+
+
+    for (i=0; i < sp->thread_num; ++i)
+    {
+        spti.spt = sp->threads + i;
+
+        spti.remain = spi.slice;
+        spti.next = &spti.spt->logs;
+
+
+        while (spti.remain > 0)
+        {
+            if (spi.remain <= 0)
+            {
+                spi.file = spi.file->next;
+                if (!spi.file)
+                    return 0;
+                spi.remain = spi.file->v.s.l;
+                spi.pos = spi.file->v.s.s;
+            }
+            spti.log = *spti.next = Malloc(sizeof(iterm_t));
+            spti.next = &spti.log->next;
+            spti.log->next = NULL;
+
+
+            if (spi.remain - spti.remain > 0)
+            {
+                spti.remain = 0;
+                spti.log->v.s.s = (char *)spi.pos;
+
+                while ('\n' != *spi.pos && spi.pos - spi.file->v.s.s < spi.file->v.s.l)
+                    ++spi.pos;
+
+                ++spi.pos;
+                spti.log->v.s.l = spi.pos - spti.log->v.s.s;
+                spi.remain = spi.file->v.s.l - (spi.pos - spi.file->v.s.s);
+
+                continue;
+            }
+
+            spti.remain -= spi.remain;
+            spti.log->v.s.s = (char *)spi.pos;
+            spti.log->v.s.l = spi.remain;
+
+            spi.remain = 0;
+        }
+    }
+    return 0;
+}
+
+static size_t spectrum_open_log(struct spectrum *sp)
+{
+    iterm_t *iterm;
+    int fd;
+    struct stat st;
+    size_t total_size = 0;
+
+    iterm = sp->file_logs;
+    while(iterm)
+    {
+        loginfo("open log file: %s\n", iterm->name->s);
+        fd = open(iterm->name->s, O_RDONLY);
+        if (fd < -1)
+        {
+            logerr("open file fial: %s\n", iterm->name->s);
+            return 0;
+        }
+        if(-1 == fstat(fd, &st))
+        {
+            logerr("stat: %s", strerror(errno));
+            return 0;
+        }
+
+        total_size += st.st_size;
+        iterm->v.s.s = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+        if ((void *)-1 == iterm->v.s.s)
+        {
+            logerr("%s\n", strerror(errno));
+            return -1;
+        }
+        iterm->v.s.l = st.st_size;
+
+        close(fd);
+        iterm = iterm->next;
+    }
+
+    return total_size;
+
+}
 
 static int spectrum_log_split(struct spectrum *sp)
 {
     // thread_num
-    struct sws_filebuf *log_buf;
-    int size, i;
-    const char *log;
     struct sp_thread *spt;
+    size_t total;
+    int i;
 
-    // calc thread_num
-    log_buf = sws_fileread(sp->file_log);
-    if (!log_buf)
-    {
-        logerr("open `%s' fail\n", sp->file_log);
-        return -1;
-    }
+    total = spectrum_open_log(sp);
 
-    sp->log_buf = log_buf;
+    if (!total) return -1;
 
-    sp->thread_num = MIN(log_buf->size/ 1024/ 1024, sp->thread_num);
+    sp->thread_num = MIN(total / sp->option_slice_size, sp->thread_num);
     sp->thread_num = MAX(1, sp->thread_num);
 
     sp->threads = Malloc(sizeof(struct sp_thread) * sp->thread_num);
@@ -43,60 +150,47 @@ static int spectrum_log_split(struct spectrum *sp)
 
     for (i=0; i < sp->thread_num; ++i)
     {
-        sp->threads[i].sp = sp;
-        sp->threads[i].ovector_n = (sp->fields_n + 3) * 3;
-        sp->threads[i].ovector = Malloc(sizeof(int) * sp->threads[i].ovector_n);
-    }
-
-    // split log
-    size = log_buf->size / sp->thread_num;
-    log = log_buf->buf;
-
-    for (i=0; i < sp->thread_num; ++i)
-    {
         spt = sp->threads + i;
-        spt->log = log;
 
-        if (1 == sp->thread_num - i) // last one
-        {
-            spt->loglen = log_buf->buf + log_buf->size - spt->log;
-        }
-        else{
-            log = log + size;
-            while ('\n' != *log) ++log;
-            ++log;
-
-            spt->loglen = log - spt->log;
-        }
+        spt->sp = sp;
+        spt->ovector_n = (sp->fields_n + 3) * 3;
+        spt->ovector = Malloc(sizeof(int) * spt->ovector_n);
     }
+
+    spectrum_log_alloc(sp, total);
     return 0;
 }
 
 
-static int spectrum_recod_reads(struct spectrum *sp)
+static int spectrum_pthread_create(struct spectrum *sp, void *handle)
 {
     int i;
     struct sp_thread *spt;
-    struct timeval time_start, time_end;
-    gettimeofday(&time_start, NULL);
 
-    if (0 != spectrum_log_split(sp))
-    {
-        return -1;
-    }
-
-    debug("create %d threads\n", sp->thread_num);
+    debug("spectrum_pthread_create: create %d threads\n", sp->thread_num);
     for (i=0; i < sp->thread_num; ++i)
     {
         spt = sp->threads + i;
-        spt->L = splua_init(sp, spt);
+
         if (!spt->L)
-            return -1;
-        if (0 != pthread_create(&spt->tid, 0, record_reads, spt))
+            spt->L = splua_init(sp, spt);
+
+        if (!spt->L) return -1;
+
+        if (0 != pthread_create(&spt->tid, 0, handle, spt))
         {
-            printf("create thread `%d' fail\n", i);
+            logerr("create thread `%d' fail\n", i);
         }
     }
+
+    return 0;
+}
+
+
+static int spectrum_join(struct spectrum *sp)
+{
+    int i;
+    struct sp_thread *spt;
 
     for (i=0; i < sp->thread_num; ++i)
     {
@@ -104,23 +198,12 @@ static int spectrum_recod_reads(struct spectrum *sp)
         if (spt->tid)
         {
             pthread_join(spt->tid, NULL);
-   //         printf("thread %d finish\n", i);
             spt->tid = 0;
         }
     }
-
-
-
-    gettimeofday(&time_end, NULL);
-    sp->time = (time_end.tv_sec - time_start.tv_sec) * 1000000 +
-        time_end.tv_usec - time_start.tv_usec;
-
-    //printf("TimeSpace: %lds %ldms %ldmi\n", t / 1000000,
-    //        t % 1000000 / 1000,
-    //        t % 1000
-    //        );
     return 0;
 }
+
 
 static iterm_t *spectrum_iterm_get(struct sp_thread *spt, string_t *s)
 {
@@ -137,36 +220,36 @@ static iterm_t *spectrum_iterm_get(struct sp_thread *spt, string_t *s)
 }
 
 
+static int spectrum_recod_reads(struct spectrum *sp)
+{
+    struct timeval time_start, time_end;
+
+    gettimeofday(&time_start, NULL);
+
+    if (spectrum_log_split(sp)) return -1;
+
+    spectrum_pthread_create(sp, record_reads);
+
+    spectrum_join(sp);
+
+    gettimeofday(&time_end, NULL);
+    sp->time = (time_end.tv_sec - time_start.tv_sec) * 1000000 +
+        time_end.tv_usec - time_start.tv_usec;
+
+    return 0;
+}
+
+
 static void spectrum_recod_iter(struct spectrum *sp)
 {
     int i;
-    struct sp_thread *spt;
     iterm_t *iterm1;
     iterm_t *iterm2;
 
-    debug("create %d threads\n", sp->thread_num);
-    for (i=0; i < sp->thread_num; ++i)
-    {
-        spt = sp->threads + i;
-        spt->L = splua_init(sp, spt);
-        if (!spt->L)
-            return;
-        if (0 != pthread_create(&spt->tid, 0, record_iter, spt))
-        {
-            printf("create thread `%d' fail\n", i);
-        }
-    }
+    spectrum_pthread_create(sp, record_iter);
 
-    for (i=0; i < sp->thread_num; ++i)
-    {
-        spt = sp->threads + i;
-        if (spt->tid)
-        {
-            pthread_join(spt->tid, NULL);
-//            printf("thread %d finish\n", i);
-            spt->tid = 0;
-        }
-    }
+    spectrum_join(sp);
+
 
     if (sp->thread_num > 1)
     {
@@ -287,7 +370,7 @@ static int spectrum_server_cycle(struct spectrum *sp)
 
 int spectrum_start_server(struct spectrum *sp)
 {
-    if (!sp->file_log || !sp->file_pattern)
+    if (!sp->file_pattern)
     {
         printf("should set file_log and file_pattern in spectrum_config "
                 "of spectrum.lua\n");
@@ -295,7 +378,6 @@ int spectrum_start_server(struct spectrum *sp)
     }
 
     debug("Pattern File: %s\n", sp->file_pattern);
-    debug("Log File: %s\n", sp->file_log);
 
     if (pattern_compile(sp, sp->file_pattern))
     {

@@ -131,17 +131,42 @@ static int splua_handle_sp_opt_newindex(lua_State *L)
     }
 
     field = sp_lua_tolstring(L, 2);
-    value = sp_lua_tolstring(L, 3);
 
-    if (0 == strncmp("file_log", field->s, field->l))
+    if (0 == strncmp("file_logs", field->s, field->l))
     {
-        sp->file_log = value->s;
-        //debug("sp.file_log = %s\n", sp->file_log);
-        return 0;
+        iterm_t **iterm;
+        iterm = &sp->file_logs;
+        if (lua_isstring(L, -1))
+        {
+            *iterm = Malloc(sizeof(iterm_t));
+            (*iterm)->name = sp_lua_tolstring(L, -1);
+            (*iterm)->next = NULL;
+            return 0;
+        }
+
+        if (lua_istable(L, -1))
+        {
+            lua_pushnil(sp->L);
+            while (lua_next(sp->L, -2))
+            {
+                if (lua_isstring(sp->L, -1))
+                {
+                    *iterm = Malloc(sizeof(iterm_t));
+                    (*iterm)->name = sp_lua_tolstring(L, -1);
+                    (*iterm)->next = NULL;
+                    iterm = &(*iterm)->next;
+                }
+                lua_pop(sp->L, 1);
+            }
+            return 0;
+        }
+
+        return luaL_error(L, "sp file_logs just support string or table.\n");
     }
 
     if (0 == strncmp("file_pattern", field->s, field->l))
     {
+        value = sp_lua_tolstring(L, 3);
         sp->file_pattern = value->s;
         //debug("sp.file_pattern = %s\n", sp->file_pattern);
         return 0;

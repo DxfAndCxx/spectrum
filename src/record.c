@@ -115,28 +115,31 @@ void *record_reads(void *_spt)
 {
     const char *s, *e;
     struct sp_thread *spt;
+    iterm_t *iterm;
+
     spt = (struct sp_thread*)_spt;
 
-    s = e = spt->log;
+    iterm = spt->logs;
+    while (iterm)
+    {
+        s = e = iterm->v.s.s;
 
-    while (e - spt->log < (long)spt->loglen)
-    {
-        if ('\n' == *e)
+        while (e - iterm->v.s.s < (long)iterm->v.s.l)
         {
-            if (record_read(spt, s, e - s))
+            if ('\n' == *e)
             {
-                return NULL;
+                if (record_read(spt, s, e - s))
+                {
+                    return NULL;
+                }
+                s = e + 1;
             }
-            s = e + 1;
+            ++e;
         }
-        ++e;
+        iterm = iterm->next;
     }
-    //loginfo("Records Match: %lu NoMatch: %lu ErrMatch: %lu\n",
-    //        spt->record_num, spt->record_nomatch_num, spt->record_errmatch_num);
-    if (sp_stage_lua_call(spt->L, "spectrum_record_read_end"))
-    {
-        return NULL;
-    }
+
+    if (sp_stage_lua_call(spt->L, "spectrum_record_read_end")) return NULL;
 
     return NULL;
 }

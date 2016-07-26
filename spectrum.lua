@@ -11,8 +11,8 @@
 
 
 function spectrum_config()
-    sp.opt.file_log = 't/ngx_logs'
-    sp.opt.file_log = '/home/vagrant/tmp/test.log'
+    --sp.opt.file_log = 't/ngx_logs'
+    sp.opt.file_logs = {'/home/vagrant/tmp/test.log', '/home/vagrant/tmp/test.log'}
     sp.opt.file_pattern = 't/pattern'
 end
 

@@ -23,6 +23,7 @@ static struct spectrum *spectrum_init()
     sp->option_server_port = 8991;
     sp->option_server_host = "127.0.0.1";
     sp->option_server_cycle = 1;
+    sp->option_slice_size = 1024 * 1024 * 100;
 
 
     sp->file_rc = "spectrum.lua";

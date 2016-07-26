@@ -20,7 +20,7 @@
 #define Malloc malloc
 #define Free free
 
-#define debug 
+#define debug
 #define logerr printf
 #define loginfo printf
 
@@ -76,8 +76,7 @@ struct sp_thread{
     size_t records_num_errmatch;
     size_t records_num_droped;
 
-    const char *log;
-    size_t loglen;
+    iterm_t *logs;
 
     lua_State *L;
 
@@ -108,20 +107,25 @@ struct spectrum{
 
     unsigned long time;
 
-    const char *file_log;
     const char *file_pattern;
     const char *file_rc;
 
     struct sws_filebuf *log_buf;
 
+    iterm_t *file_logs;
+    int file_logs_n;
+
     int server_fd;
     int confd;
+
+
 
     // options
     int option_work_as_server;
     int option_server_cycle;
     int option_server_port;
     int option_nomatch_output;
+    int option_slice_size;
     const char *option_server_host;
     const char *option_client_cmd;
 
