@@ -102,7 +102,7 @@ static uint64_t spectrum_open_log(struct spectrum *sp)
     iterm = sp->file_logs;
     while(iterm)
     {
-        loginfo("open log file: %s\n", iterm->name->s);
+        loginfo("* Open Log File: %s\n", iterm->name->s);
         fd = open(iterm->name->s, O_RDONLY);
         if (fd < 0)
         {
@@ -251,10 +251,10 @@ static int spectrum_recod_reads(struct spectrum *sp)
         nums[2] += spt->records_num_errmatch;
         nums[3] += spt->records_num_droped;
     }
-    loginfo("Records: %lu NoMatch: %lu Err: %lu Drop: %lu\n",
+    loginfo("* Records: %lu NoMatch: %lu Err: %lu Drop: %lu\n",
             nums[0], nums[1], nums[2], nums[3]);
 
-    loginfo("Time: %lu %lums %lumirc\n",
+    loginfo("* Time: %lus %lums %lumirc\n",
             sp->time/ 1000000, sp->time % 1000000 / 1000, sp->time % 1000);
 
 
