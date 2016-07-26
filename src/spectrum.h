@@ -20,7 +20,7 @@
 #define Malloc malloc
 #define Free free
 
-#define debug
+#define debug 
 #define logerr printf
 #define loginfo printf
 

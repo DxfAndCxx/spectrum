@@ -17,37 +17,6 @@
 #include "spectrum.h"
 
 
-
-
-static int spectrum_lua_init(struct spectrum *sp)
-{
-
-
-    sp->L = luaL_newstate();
-    luaL_openlibs(sp->L);
-
-    lua_createtable(sp->L, 0 /* narr */, 116 /* nrec */);    /* sp.* */
-
-    lua_createtable(sp->L, 0, 2 /* nrec */); /* metatable for .var */
-
-
-    lua_setmetatable(sp->L, -2);
-
-    lua_setglobal(sp->L, "sp");
-
-    if (0 != luaL_dofile(sp->L, sp->file_rc))
-    {
-        printf("dofile `%s' err: %s\n", sp->file_rc, lua_tostring(sp->L, -1));
-        lua_pop(sp->L, 1);
-    }
-
-    lua_pushlightuserdata(sp->L, sp);
-    lua_setglobal(sp->L, "__sp");
-
-    return 0;
-}
-
-
 static int spectrum_log_split(struct spectrum *sp)
 {
     // thread_num
