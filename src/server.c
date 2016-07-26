@@ -174,8 +174,10 @@ static int spectrum_pthread_create(struct spectrum *sp, void *handle)
     {
         spt = sp->threads + i;
 
-        if (!spt->L)
-            spt->L = splua_init(sp, spt);
+        if (spt->L)
+            lua_close(spt->L);
+
+        spt->L = splua_init(sp, spt);
 
         if (!spt->L) return -1;
 
@@ -225,6 +227,9 @@ static iterm_t *spectrum_iterm_get(struct sp_thread *spt, string_t *s)
 static int spectrum_recod_reads(struct spectrum *sp)
 {
     struct timeval time_start, time_end;
+    uint64_t nums[4] = {0};
+    struct sp_thread *spt;
+    int i;
 
     gettimeofday(&time_start, NULL);
 
@@ -237,6 +242,22 @@ static int spectrum_recod_reads(struct spectrum *sp)
     gettimeofday(&time_end, NULL);
     sp->time = (time_end.tv_sec - time_start.tv_sec) * 1000000 +
         time_end.tv_usec - time_start.tv_usec;
+
+    for (i=0; i < sp->thread_num; ++i)
+    {
+        spt = sp->threads + i;
+        nums[0] += spt->records_num;
+        nums[1] += spt->records_num_nomatch;
+        nums[2] += spt->records_num_errmatch;
+        nums[3] += spt->records_num_droped;
+    }
+    loginfo("Records: %lu NoMatch: %lu Err: %lu Drop: %lu\n",
+            nums[0], nums[1], nums[2], nums[3]);
+
+    loginfo("Time: %lu %lums %lumirc\n",
+            sp->time/ 1000000, sp->time % 1000000 / 1000, sp->time % 1000);
+
+
 
     return 0;
 }
