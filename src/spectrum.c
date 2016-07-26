@@ -56,6 +56,28 @@ static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
                 sp->option_work_as_server = 1;
                 break;
 
+            case 'l':
+                if (i == argc)
+                {
+                    printf("option: `%s' except arg\n", p - 1);
+                    return -1;
+                }
+                iterm_t **iterm;
+                string_t *name;
+
+                iterm = &sp->file_logs;
+                while (*iterm)
+                    iterm = &(*iterm)->next;
+
+                *iterm = Malloc(sizeof(iterm_t));
+                name = Malloc(sizeof(*name));
+                name->s = (char *)argv[i++];
+                name->l = strlen(name->s);
+                (*iterm)->name = name;
+                (*iterm)->next = NULL;
+
+                break;
+
             case 'f':
                 if (i == argc)
                 {

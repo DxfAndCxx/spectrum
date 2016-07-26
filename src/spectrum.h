@@ -33,7 +33,7 @@ enum var_type{
 
 struct string{
     char *s;
-    uint64_t l;
+    int64_t l;
 };
 
 struct number{
@@ -71,10 +71,10 @@ struct sp_thread{
     record_t *record;
     record_t *record_tail;
 
-    uint64_t records_num;
-    uint64_t records_num_nomatch;
-    uint64_t records_num_errmatch;
-    uint64_t records_num_droped;
+    int64_t records_num;
+    int64_t records_num_nomatch;
+    int64_t records_num_errmatch;
+    int64_t records_num_droped;
 
     iterm_t *logs;
 

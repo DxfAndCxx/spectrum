@@ -48,7 +48,7 @@ static void record_destory(record_t *record)
 
 
 
-static int record_read(struct sp_thread *spt, const char *src, uint64_t len)
+static int record_read(struct sp_thread *spt, const char *src, int64_t len)
 {
     int rc, i;
     struct item *item;
@@ -124,9 +124,9 @@ void *record_reads(void *_spt)
     {
         s = e = iterm->v.s.s;
 
-        while (e - iterm->v.s.s < (long)iterm->v.s.l)
+        while (e - iterm->v.s.s < iterm->v.s.l)
         {
-            if ('\n' == *e)
+            if ('\n' == *e || 0 == *e)
             {
                 if (record_read(spt, s, e - s))
                 {

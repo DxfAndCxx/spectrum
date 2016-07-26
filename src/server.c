@@ -18,86 +18,93 @@
 #include <sys/mman.h>
 
 
-static int spectrum_log_alloc(struct spectrum *sp, uint64_t uint64_total)
+static int spectrum_log_alloc(struct spectrum *sp, int64_t int64_total)
 {
     struct {
         const char *pos;
-        uint64_t remain;
-        uint64_t slice;
+        int64_t remain;
+        int64_t slice;
         iterm_t *file;
-    } spi;
+    } T;
 
     struct {
         struct sp_thread *spt;
 
-        uint64_t remain;
+        int64_t remain;
         iterm_t *log;
         iterm_t **next;
-    } spti;
+    } t;
     int i;
 
-    spi.slice = uint64_total / sp->thread_num;
+    T.slice = int64_total / sp->thread_num;
 
-    spi.file = sp->file_logs;
-    spi.remain = spi.file->v.s.l;
-    spi.pos = spi.file->v.s.s;
+    T.file = sp->file_logs;
+    T.remain = T.file->v.s.l;
+    T.pos = T.file->v.s.s;
 
 
     for (i=0; i < sp->thread_num; ++i)
     {
-        spti.spt = sp->threads + i;
+        t.spt = sp->threads + i;
 
-        spti.remain = spi.slice;
-        spti.next = &spti.spt->logs;
+        t.remain = T.slice;
+        t.next = &t.spt->logs;
 
 
-        while (spti.remain > 0)
+        while (t.remain > 0)
         {
-            if (spi.remain <= 0)
+            if (T.remain <= 0)
             {
-                spi.file = spi.file->next;
-                if (!spi.file)
+                T.file = T.file->next;
+                if (!T.file)
                     return 0;
-                spi.remain = spi.file->v.s.l;
-                spi.pos = spi.file->v.s.s;
+                T.remain = T.file->v.s.l;
+                T.pos = T.file->v.s.s;
             }
-            spti.log = *spti.next = Malloc(sizeof(iterm_t));
-            spti.next = &spti.log->next;
-            spti.log->next = NULL;
+            t.log = *t.next = Malloc(sizeof(iterm_t));
+            t.next = &t.log->next;
+            t.log->next = NULL;
 
 
-            if (spi.remain - spti.remain > 0)
+            if (T.remain > t.remain)
             {
-                spti.log->v.s.s = (char *)spi.pos;
-                spi.pos += spti.remain;
+                t.log->name = T.file->name;
+                t.log->v.s.s = (char *)T.pos;
+                T.pos += t.remain;
 
-                while ('\n' != *spi.pos && spi.pos - spi.file->v.s.s < spi.file->v.s.l)
-                    ++spi.pos;
+                while (T.pos - T.file->v.s.s < T.file->v.s.l)
+                {
+                    if ('\n' == *T.pos) break;
+                    ++T.pos;
+                }
 
-                ++spi.pos;
-                spti.log->v.s.l = spi.pos - spti.log->v.s.s;
-                spi.remain = spi.file->v.s.l - (spi.pos - spi.file->v.s.s);
+                if (T.pos - T.file->v.s.s < T.file->v.s.l - 1)
+                    ++T.pos;
 
-                spti.remain = 0;
+                t.log->v.s.l = T.pos - t.log->v.s.s;
+                T.remain = T.file->v.s.l - (T.pos - T.file->v.s.s);
+
+                t.remain = 0;
                 continue;
             }
 
-            spti.remain -= spi.remain;
-            spti.log->v.s.s = (char *)spi.pos;
-            spti.log->v.s.l = spi.remain;
+            t.log->name = T.file->name;
+            t.remain -= T.remain;
+            t.log->v.s.s = (char *)T.pos;
+            t.log->v.s.l = T.remain;
 
-            spi.remain = 0;
+            T.remain = 0;
         }
     }
     return 0;
 }
 
-static uint64_t spectrum_open_log(struct spectrum *sp)
+static int64_t spectrum_open_log(struct spectrum *sp)
 {
     iterm_t *iterm;
     int fd;
     struct stat st;
-    uint64_t total_size = 0;
+    int64_t total_size = 0;
 
     iterm = sp->file_logs;
     while(iterm)
@@ -137,7 +144,7 @@ static int spectrum_log_split(struct spectrum *sp)
 {
     // thread_num
     struct sp_thread *spt;
-    uint64_t total;
+    int64_t total;
     int i;
 
     total = spectrum_open_log(sp);
@@ -227,7 +234,7 @@ static iterm_t *spectrum_iterm_get(struct sp_thread *spt, string_t *s)
 static int spectrum_recod_reads(struct spectrum *sp)
 {
     struct timeval time_start, time_end;
-    uint64_t nums[4] = {0};
+    int64_t nums[4] = {0};
     struct sp_thread *spt;
     int i;
 

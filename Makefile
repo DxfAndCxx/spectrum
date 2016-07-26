@@ -1,6 +1,6 @@
 LUAFLAGS= -lm -ldl
 LDFLAGS= -lpcre -lpthread $(LUAFLAGS)
-CFLAGS= -g -I sws -I luajit/src/
+CFLAGS= -g -I sws -I luajit/src/ -O0
 
 objects += src/pattern.o
 objects += src/record.o
