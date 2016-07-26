@@ -48,7 +48,7 @@ static void record_destory(record_t *record)
 
 
 
-static int record_read(struct sp_thread *spt, const char *src, size_t len)
+static int record_read(struct sp_thread *spt, const char *src, uint64_t len)
 {
     int rc, i;
     struct item *item;

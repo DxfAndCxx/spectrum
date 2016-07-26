@@ -18,25 +18,25 @@
 #include <sys/mman.h>
 
 
-static int spectrum_log_alloc(struct spectrum *sp, size_t size_total)
+static int spectrum_log_alloc(struct spectrum *sp, uint64_t uint64_total)
 {
     struct {
         const char *pos;
-        size_t remain;
-        size_t slice;
+        uint64_t remain;
+        uint64_t slice;
         iterm_t *file;
     } spi;
 
     struct {
         struct sp_thread *spt;
 
-        size_t remain;
+        uint64_t remain;
         iterm_t *log;
         iterm_t **next;
     } spti;
     int i;
 
-    spi.slice = size_total / sp->thread_num;
+    spi.slice = uint64_total / sp->thread_num;
 
     spi.file = sp->file_logs;
     spi.remain = spi.file->v.s.l;
@@ -91,12 +91,12 @@ static int spectrum_log_alloc(struct spectrum *sp, size_t size_total)
     return 0;
 }
 
-static size_t spectrum_open_log(struct spectrum *sp)
+static uint64_t spectrum_open_log(struct spectrum *sp)
 {
     iterm_t *iterm;
     int fd;
     struct stat st;
-    size_t total_size = 0;
+    uint64_t total_size = 0;
 
     iterm = sp->file_logs;
     while(iterm)
@@ -135,7 +135,7 @@ static int spectrum_log_split(struct spectrum *sp)
 {
     // thread_num
     struct sp_thread *spt;
-    size_t total;
+    uint64_t total;
     int i;
 
     total = spectrum_open_log(sp);

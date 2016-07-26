@@ -16,10 +16,10 @@
 
 struct pattern_line{
     const char *name;
-    size_t name_len;
+    uint64_t name_len;
 
     const char *pattern;
-    size_t pattern_len;
+    uint64_t pattern_len;
 
     const char *end;
 };
