@@ -28,6 +28,13 @@ int loginfo(const char *fmt, ...);
 #define debug
 #define logerr loginfo
 
+
+//得到成员在结构
+//#define offsetof(TYPE, MEMBER) ((unsigned int) &((TYPE *)0)->MEMBER)
+#define container_of(ptr, type, member) ({                      \
+        const typeof(((type *)0)->member) * __mptr = (ptr);     \
+        (type *)((char *)__mptr - offsetof(type, member)); })
+
 enum var_type{
     VAR_TYPE_STR=0,
     VAR_TYPE_NUM,

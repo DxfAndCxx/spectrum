@@ -30,23 +30,24 @@ static struct spectrum *spectrum_init()
 }
 
 
-//static spectrum_args_append(void *value, const char *arg)
-//{
-//                iterm_t **iterm;
-//                string_t *name;
-//
-//                iterm = &sp->file_logs;
-//                while (*iterm)
-//                    iterm = &(*iterm)->next;
-//
-//                *iterm = Malloc(sizeof(iterm_t));
-//                name = Malloc(sizeof(*name));
-//                name->s = (char *)argv[i++];
-//                name->l = strlen(name->s);
-//                (*iterm)->name = name;
-//                (*iterm)->next = NULL;
-//
-//}
+static int spectrum_args_append(void *value, const char *arg)
+{
+    iterm_t **iterm;
+    string_t *name;
+
+    iterm = (iterm_t **)value;
+    while (*iterm)
+        iterm = &(*iterm)->next;
+
+    *iterm = Malloc(sizeof(iterm_t));
+    name = Malloc(sizeof(*name));
+    name->s = (char *)arg;
+    name->l = strlen(name->s);
+    (*iterm)->name = name;
+    (*iterm)->next = NULL;
+
+    return 0;
+}
 
 
 static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
@@ -58,8 +59,8 @@ static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
     help = "work as server";
     sws_argparser_add("-S", &sp->option_server_cycle, SWS_AP_BOOL, help);
 
-//    help = "set log file";
-//    sws_argparser_add("-l", &sp->file_logs, spectrum_args_append, help);
+    help = "set log file";
+    sws_argparser_add("-l", &sp->file_logs, spectrum_args_append, help);
 
     help = "set rc.lua file";
     sws_argparser_add("-f", &sp->file_rc, SWS_AP_STRING, help);
