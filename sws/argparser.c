@@ -94,9 +94,65 @@ found:
 }
 
 
+static const char *convert_type_to_name(sws_arg *A)
+{
+    switch((long)A->type)
+    {
+        case (long)SWS_AP_BOOL:
+            return "";
+
+        case (long)SWS_AP_INT:
+            return "<int>";
+
+        case (long)SWS_AP_DOUBLE:
+            return "<double>";
+            break;
+
+        default:
+            return "<str>";
+    }
+}
+
+
+static void call_help_print(int argc, const char **argv)
+{
+    sws_arg *A;
+    const char *help;
+    int optl = 0;
+    const char *opt;
+
+    A = arg_head.next;
+
+    while (A){
+        if (optl < strlen(A->arg))
+        {
+            optl = strlen(A->arg);
+        }
+        A = A->next;
+    }
+
+    A = arg_head.next;
+
+    printf("Usage: %s [-h]\n\n", argv[0]);
+    printf("optional arguments:\n");
+    while (A){
+        help = A->help ? A->help : "";
+
+        opt = "";
+
+        printf("  %-*s %-5s %s\n", optl, A->arg, convert_type_to_name(A), A->help);
+        A = A->next;
+    }
+
+}
+
+
 int sws_argparser(int argc, const char **argv)
 {
     int i, ii;
+    int help = 0;
+
+    sws_argparser_add("-h", &help, SWS_AP_BOOL, "print this help info");
 
     i = 1;
     while(i < argc)
@@ -114,6 +170,15 @@ int sws_argparser(int argc, const char **argv)
         }
         i = ii + 1;
     }
+
+    if (help)
+    {
+        call_help_print(argc, argv);
+        return -1;
+    }
+
+
+
     return 0;
 }
 
