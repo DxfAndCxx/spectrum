@@ -52,22 +52,13 @@ static int spectrum_args_append(void *value, const char *arg)
 
 static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
 {
-    const char *help;
-
-    help = "work as server.";
-    sws_argparser_add("-s", &sp->option_server_cycle, SWS_AP_BOOL, help);
-
-    help = "set log file, can set multi times.";
-    sws_argparser_add("-l", &sp->file_logs, spectrum_args_append, help);
-
-    help = "set pattern file.";
-    sws_argparser_add("-p", &sp->file_pattern, spectrum_args_append, help);
-
-    help = "set rc.lua file. default is ./spectrum.lua.";
-    sws_argparser_add("-r", &sp->file_rc, SWS_AP_STRING, help);
-
-    help = "set the client cmd and work as client.";
-    sws_argparser_add("-c", &sp->option_client_cmd, SWS_AP_STRING, help);
+    sws_argparser_add("-s",            &sp->option_server_cycle, SWS_AP_BOOL,          "work as server.");
+    sws_argparser_add("--server-port", &sp->option_server_port,  SWS_AP_INT,           "set the server listen port.");
+    sws_argparser_add("--server-host", &sp->option_server_host,  SWS_AP_STRING,        "set the server listen host.");
+    sws_argparser_add("-l",            &sp->file_logs,           spectrum_args_append, "set log file, can set multi times.");
+    sws_argparser_add("-p",            &sp->file_pattern,        spectrum_args_append, "set pattern file.");
+    sws_argparser_add("-r",            &sp->file_rc,             SWS_AP_STRING,        "set rc.lua file. default is ./spectrum.lua.");
+    sws_argparser_add("-c",            &sp->option_client_cmd,   SWS_AP_STRING,        "set the client cmd and work as client.");
 
     return sws_argparser(argc, argv);
 }
