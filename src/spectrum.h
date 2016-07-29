@@ -20,9 +20,13 @@
 #define Malloc malloc
 #define Free free
 
+
+
+
+int loginfo(const char *fmt, ...);
+
 #define debug
-#define logerr printf
-#define loginfo printf
+#define logerr loginfo
 
 enum var_type{
     VAR_TYPE_STR=0,

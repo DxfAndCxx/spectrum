@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "spectrum.h"
 
@@ -52,5 +53,19 @@ int sp_stage_lua_call(lua_State *L, const char *name)
 
 
 
+int loginfo(const char *fmt, ...)
+{
+    int n;
+    char buf[512];
+    va_list ap;
+
+    va_start(ap, fmt);
+    n = vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+    write(2, buf, n);
+
+    return n;
+}
 
 
