@@ -47,6 +47,13 @@ static inline const char *geterr()
     return errstr;
 }
 
+#define SWS_AP_INT    (void *)1
+#define SWS_AP_BOOL   (void *)2
+#define SWS_AP_FLOAT  (void *)3
+#define SWS_AP_DOUBLE (void *)4
+#define SWS_AP_STRING (void *)5
+void sws_argparser_add(const char *arg, void *value, void *type, const char *help);
+int sws_argparser(int argc, const char **argv);
 #endif
 
 

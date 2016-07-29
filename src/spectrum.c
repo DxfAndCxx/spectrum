@@ -22,7 +22,6 @@ static struct spectrum *spectrum_init()
     sp->thread_num = sysconf(_SC_NPROCESSORS_ONLN);
     sp->option_server_port = 8991;
     sp->option_server_host = "127.0.0.1";
-    sp->option_server_cycle = 1;
     sp->option_slice_size = 1024 * 1024 * 100;
 
 
@@ -31,6 +30,48 @@ static struct spectrum *spectrum_init()
 }
 
 
+//static spectrum_args_append(void *value, const char *arg)
+//{
+//                iterm_t **iterm;
+//                string_t *name;
+//
+//                iterm = &sp->file_logs;
+//                while (*iterm)
+//                    iterm = &(*iterm)->next;
+//
+//                *iterm = Malloc(sizeof(iterm_t));
+//                name = Malloc(sizeof(*name));
+//                name->s = (char *)argv[i++];
+//                name->l = strlen(name->s);
+//                (*iterm)->name = name;
+//                (*iterm)->next = NULL;
+//
+//}
+
+
+static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
+{
+    const char *help;
+    //help = "work as server just onece";
+    //sws_argparser_add("-s", &sp->option_server_cycle, SWS_AP_BOOL, help);
+
+    help = "work as server";
+    sws_argparser_add("-S", &sp->option_server_cycle, SWS_AP_BOOL, help);
+
+//    help = "set log file";
+//    sws_argparser_add("-l", &sp->file_logs, spectrum_args_append, help);
+
+    help = "set rc.lua file";
+    sws_argparser_add("-f", &sp->file_rc, SWS_AP_STRING, help);
+
+    help = "set the client cmd and work as client";
+    sws_argparser_add("-c", &sp->option_client_cmd, SWS_AP_STRING, help);
+
+    return sws_argparser(argc, argv);
+}
+
+
+/*
 static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
 {
     int i;
@@ -104,7 +145,7 @@ static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
 
     return 0;
 }
-
+*/
 
 int main(int argc, const char **argv)
 {
@@ -125,11 +166,9 @@ int main(int argc, const char **argv)
 
     sp_stage_lua_call(sp->L, "spectrum_config");
 
-    if (0 != spectrum_options(sp, argc, argv)) return -1;
-
-    if (sp->option_work_as_server)
+    if (sp->option_client_cmd)
     {
-        return spectrum_start_server(sp);
+        return spectrum_start_client(sp);
     }
-    return spectrum_start_client(sp);
+    return spectrum_start_server(sp);
 }

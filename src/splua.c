@@ -134,6 +134,8 @@ static int splua_handle_sp_opt_newindex(lua_State *L)
 
     if (0 == strncmp("file_logs", field->s, field->l))
     {
+        if (sp->file_logs) return 0;
+
         iterm_t **iterm;
         iterm = &sp->file_logs;
         if (lua_isstring(L, -1))
@@ -166,6 +168,8 @@ static int splua_handle_sp_opt_newindex(lua_State *L)
 
     if (0 == strncmp("file_pattern", field->s, field->l))
     {
+        if (sp->file_pattern) return 0;
+
         value = sp_lua_tolstring(L, 3);
         sp->file_pattern = value->s;
         //debug("sp.file_pattern = %s\n", sp->file_pattern);
