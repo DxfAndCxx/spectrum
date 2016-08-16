@@ -23,6 +23,7 @@ static struct spectrum *spectrum_init()
     sp->option_server_port = 8991;
     sp->option_server_host = "127.0.0.1";
     sp->option_slice_size = 1024 * 1024 * 100;
+    sp->option_log_level = LogLevelInfo;
 
 
     sp->file_rc = "spectrum.lua";
@@ -77,9 +78,9 @@ int main(int argc, const char **argv)
         return -1;
     }
 
-    set_loglevel(sp->option_log_level);
-
     if (0 != spectrum_options(sp, argc, argv)) return -1;
+
+    set_loglevel(sp->option_log_level);
 
     sp->L = splua_init(sp, sp);
     if (!sp->L) return -1;
