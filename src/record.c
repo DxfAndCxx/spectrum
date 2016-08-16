@@ -11,7 +11,6 @@
 #include <string.h>
 #include "spectrum.h"
 
-#define loginfo printf
 
 static inline void record_lua_spt_set(lua_State *L, struct sp_thread *sp);
 static inline struct sp_thread *record_lua_spt_get(lua_State *L);

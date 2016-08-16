@@ -21,12 +21,17 @@
 #define Free free
 
 
+#define LogLevelErr 0
+#define LogLevelInfo 4
+#define LogLevelDebug 5
 
 
-int loginfo(const char *fmt, ...);
+int __log(int level, const char *fmt, ...);
+void set_loglevel(int level);
 
-#define debug
-#define logerr loginfo
+#define debug(...)  __log(LogLevelDebug, __VA_ARGS__)
+#define loginfo(...) __log(LogLevelInfo, __VA_ARGS__)
+#define logerr(...) __log(LogLevelErr, __VA_ARGS__)
 
 
 //得到成员在结构
@@ -137,6 +142,7 @@ struct spectrum{
     int option_server_port;
     int option_nomatch_output;
     int option_slice_size;
+    int option_log_level;
     const char *option_server_host;
     const char *option_client_cmd;
 

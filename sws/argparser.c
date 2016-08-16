@@ -25,13 +25,13 @@ struct _sws_arg{
 };
 
 typedef struct _sws_arg sws_arg;
-typedef int (*sws_argparser_handle)(void *value, const char *arg);
+typedef int (*sws_ap_handle)(void *value, const char *arg);
 
 
 static sws_arg arg_head;
 
 
-void sws_argparser_add(const char *arg, void *value, void *type, const char *help)
+void sws_ap_opt(const char *arg, void *value, void *type, const char *help)
 {
     sws_arg *A;
     sws_arg *B;
@@ -47,6 +47,13 @@ void sws_argparser_add(const char *arg, void *value, void *type, const char *hel
 
     B->next = A;
 }
+
+
+void sws_ap_pos(const char *arg, void *value, void *type, const char *help)
+{
+
+}
+
 
 static int sws_handler(int argc, const char **argv, int i)
 {
@@ -88,7 +95,7 @@ found:
             break;
 
         default:
-            ((sws_argparser_handle)A->type)(A->value, argv[i]);
+            ((sws_ap_handle)A->type)(A->value, argv[i]);
     }
     return i;
 }
@@ -147,12 +154,13 @@ static void call_help_print(int argc, const char **argv)
 }
 
 
-int sws_argparser(int argc, const char **argv)
+int sws_ap(int argc, const char **argv)
 {
     int i, ii;
     int help = 0;
 
-    sws_argparser_add("-h", &help, SWS_AP_BOOL, "print this help info");
+    sws_ap_bool("-h", &help, "print this help info");
+    sws_ap_bool("--help", &help, "print this help info");
 
     i = 1;
     while(i < argc)

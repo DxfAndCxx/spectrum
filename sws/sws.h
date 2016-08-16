@@ -52,8 +52,16 @@ static inline const char *geterr()
 #define SWS_AP_FLOAT  (void *)3
 #define SWS_AP_DOUBLE (void *)4
 #define SWS_AP_STRING (void *)5
-void sws_argparser_add(const char *arg, void *value, void *type, const char *help);
-int sws_argparser(int argc, const char **argv);
+
+void sws_ap_opt(const char *arg, void *value, void *type, const char *help);
+
+#define sws_ap_bool(arg, value, help) sws_ap_opt(arg, value, SWS_AP_BOOL, help)
+#define sws_ap_int(arg, value, help) sws_ap_opt(arg, value, SWS_AP_INT, help)
+#define sws_ap_str(arg, value, help) sws_ap_opt(arg, value, SWS_AP_STRING, help)
+#define sws_ap_double(arg, value, help) sws_ap_opt(arg, value, SWS_AP_DOUBLE, help)
+#define sws_ap_func(arg, value, func, help) sws_ap_opt(arg, value, func, help)
+
+int sws_ap(int argc, const char **argv);
 #endif
 
 

@@ -13,6 +13,8 @@
 
 #include "spectrum.h"
 
+static int loglevel;
+
 string_t *sp_lua_tolstring(lua_State *L, int index)
 {
     string_t s;
@@ -51,13 +53,18 @@ int sp_stage_lua_call(lua_State *L, const char *name)
     return sp_stage_lua_callx(L, name, 0, 0);
 }
 
+void set_loglevel(int level)
+{
+    loglevel = level;
+}
 
-
-int loginfo(const char *fmt, ...)
+int __log(int level, const char *fmt, ...)
 {
     int n;
     char buf[512];
     va_list ap;
+
+    if (level > loglevel) return 0;
 
     va_start(ap, fmt);
     n = vsnprintf(buf, sizeof(buf), fmt, ap);
