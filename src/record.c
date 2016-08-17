@@ -153,7 +153,6 @@ static record_t *record_read_pcre(struct sp_thread *spt, const char *src, int64_
         return 0;
     }
 
-    ++spt->records_num;
     record = record_new();
     for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
         item = record_vars_append(record, VAR_TYPE_STR, 0);
@@ -183,6 +182,10 @@ static int record_read(struct sp_thread *spt, const char *src, int64_t len)
         record = record_read_json(spt, src, len);
 
     }
+
+    if (!record) return 0;
+
+    ++spt->records_num;
 
     spt->current = record;
     if (sp_stage_lua_call(spt->L, "spectrum_record_read"))
