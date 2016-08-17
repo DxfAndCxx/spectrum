@@ -109,11 +109,11 @@ static int64_t spectrum_open_log(struct spectrum *sp)
     iterm = sp->file_logs;
     while(iterm)
     {
-        loginfo("* Open Log File: %s\n", iterm->name->s);
-        fd = open(iterm->name->s, O_RDONLY);
+        loginfo("* Open Log File: %s\n", iterm->name.s);
+        fd = open(iterm->name.s, O_RDONLY);
         if (fd < 0)
         {
-            logerr("open file fial: %s\n", iterm->name->s);
+            logerr("open file fial: %s\n", iterm->name.s);
             return 0;
         }
 
@@ -222,7 +222,7 @@ static iterm_t *spectrum_iterm_get(struct sp_thread *spt, string_t *s)
     iterm = spt->summary_head;
     while (iterm)
     {
-        if (s->l == iterm->name->l && !strncmp(iterm->name->s, s->s, s->l))
+        if (s->l == iterm->name.l && !strncmp(iterm->name.s, s->s, s->l))
             return iterm;
         iterm = iterm->next;
     }
@@ -275,6 +275,7 @@ static void spectrum_recod_iter(struct spectrum *sp)
     int i;
     iterm_t *iterm1;
     iterm_t *iterm2;
+    loginfo("recv iter cmd\n");
 
     spectrum_pthread_create(sp, record_iter);
 
@@ -288,7 +289,7 @@ static void spectrum_recod_iter(struct spectrum *sp)
             iterm1 = sp->threads[i].summary_head;
             while (iterm1)
             {
-                iterm2 = spectrum_iterm_get(sp->threads, iterm1->name);
+                iterm2 = spectrum_iterm_get(sp->threads, &iterm1->name);
                 if (iterm2)
                     iterm2->v.n.n += iterm1->v.n.n;
                 else{
@@ -303,8 +304,8 @@ static void spectrum_recod_iter(struct spectrum *sp)
     iterm1 = sp->threads[0].summary_head;
     while(iterm1)
     {
-        printf("%.*s = %f\n", (int)iterm1->name->l,
-                iterm1->name->s, iterm1->v.n.n);
+        printf("%.*s = %f\n", (int)iterm1->name.l,
+                iterm1->name.s, iterm1->v.n.n);
         iterm1 = iterm1->next;
 
     }
@@ -400,20 +401,25 @@ static int spectrum_server_cycle(struct spectrum *sp)
 
 int spectrum_start_server(struct spectrum *sp)
 {
-    if (!sp->file_pattern)
+    if (!sp->file_pattern && !sp->option_src_type)
     {
         printf("should set file_log and file_pattern in spectrum_config "
                 "of spectrum.lua\n");
         return -1;
     }
 
-    debug("Pattern File: %s\n", sp->file_pattern);
-
-    if (pattern_compile(sp, sp->file_pattern))
+    if (0 == sp->option_src_type)
     {
-        printf("pattern_compile fail\n");
-        return -1;
+        debug("Pattern File: %s\n", sp->file_pattern);
+
+        if (pattern_compile(sp, sp->file_pattern))
+        {
+            printf("pattern_compile fail\n");
+            return -1;
+        }
+
     }
+
 
     if (0 != spectrum_recod_reads(sp)) return -1;
 

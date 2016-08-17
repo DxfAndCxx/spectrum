@@ -7,15 +7,6 @@
 
 
 
-
-
-
-function spectrum_config()
-    --sp.opt.file_log = 't/ngx_logs'
-    sp.opt.file_logs = {'/home/vagrant/tmp/test.log', '/home/vagrant/tmp/test.log'}
-    sp.opt.file_pattern = 't/pattern'
-end
-
 local record_num = 0;
 local retry_num = 0;
 
@@ -25,36 +16,40 @@ function spectrum_record_read()
     local record = sp.record
     local fields = sp.record.fields
 
-    local pos = fields.upstream_addr:find(',')
+    --local pos = fields.upstream_addr:find(',')
 
-    local body_bytes_sent = tonumber(fields.body_bytes_sent)
-    local request_time = tonumber(fields.request_time)
 
-    if body_bytes_sent < 1024 * 5 then
-        record.drop()
-        return
-    end
 
-    if  request_time < 1 then
-        record.drop()
-        return
-    end
 
-    if body_bytes_sent / request_time < 100 * 1024 then
-        record.drop()
-        return
-    end
+    --local body_bytes_sent = tonumber(fields.body_bytes_sent)
+    --local request_time = tonumber(fields.request_time)
 
-    record_num = record_num + 1
+    --if body_bytes_sent < 1024 * 5 then
+    --    record.drop()
+    --    return
+    --end
 
-    if pos ~= nil then
-        retry_num = retry_num + 1
-        record.append("retry", '1')
-        record.append("upstream_addr_1", fields.upstream_addr:sub(1, pos))
-    else
-        record.append("retry", '0')
-        record.append("upstream_addr_1", fields.upstream_addr)
-    end
+    --if  request_time < 1 then
+    --    record.drop()
+    --    return
+    --end
+
+    --if body_bytes_sent / request_time < 100 * 1024 then
+    --    record.drop()
+    --    return
+    --end
+
+    --record_num = record_num + 1
+    print(fields.http_host)
+    print(fields.body_bytes_sent)
+    --if pos ~= nil then
+    --    retry_num = retry_num + 1
+    --    record.append("retry", '1')
+    --    record.append("upstream_addr_1", fields.upstream_addr:sub(1, pos))
+    --else
+    --    record.append("retry", '0')
+    --    record.append("upstream_addr_1", fields.upstream_addr)
+    --end
 
 
 --    print("retry: ", vars.retry, ' upstream_addr_1: ', vars.upstream_addr_1)

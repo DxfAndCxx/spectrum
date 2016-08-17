@@ -64,6 +64,10 @@ static int record_lua_var_get(lua_State *L)
         case VAR_TYPE_STR:
             lua_pushlstring(L, item->v.s.s, item->v.s.l);
             return 1;
+
+        case VAR_TYPE_NUM:
+            lua_pushnumber(L, item->v.n.n);
+            return 1;
         default:
             return 0;
 
@@ -76,7 +80,6 @@ static int record_lua_append(lua_State *L)
     struct item *item;
     int value_type;
     struct sp_thread *spt;
-    string_t *s;
     string_t *v;
     const char *msg;
     spt = splua_get_data(L);
@@ -92,17 +95,15 @@ static int record_lua_append(lua_State *L)
     }
 
 
-    s = sp_lua_tolstring(L, 1);
 
     value_type = lua_type(L, 2);
     switch (value_type) {
     case LUA_TNUMBER:
     case LUA_TSTRING:
-        v = sp_lua_tolstring(L, 2);
 
         item = record_vars_append(record, VAR_TYPE_STR, 0);
-        item->name = s;
-        item->v.s = *v;
+        sp_lua_tolstring(L, 1, &item->name);
+        sp_lua_tolstring(L, 2, &item->v.s);
         break;
 
     case LUA_TNIL:
@@ -122,17 +123,17 @@ static int record_lua_append(lua_State *L)
 static int splua_handle_sp_opt_newindex(lua_State *L)
 {
     struct spectrum *sp;
-    string_t *field;
-    string_t *value;
+    string_t field;
+    string_t value;
 
     sp = splua_get_data(L);
     if (NULL == sp) {
         return luaL_error(L, "no request object found");
     }
 
-    field = sp_lua_tolstring(L, 2);
+    sp_lua_tolstring(L, 2, &field);
 
-    if (0 == strncmp("file_logs", field->s, field->l))
+    if (0 == strncmp("file_logs", field.s, field.l))
     {
         if (sp->file_logs) return 0;
 
@@ -141,7 +142,7 @@ static int splua_handle_sp_opt_newindex(lua_State *L)
         if (lua_isstring(L, -1))
         {
             *iterm = Malloc(sizeof(iterm_t));
-            (*iterm)->name = sp_lua_tolstring(L, -1);
+            sp_lua_tolstring(L, -1, &(*iterm)->name);
             (*iterm)->next = NULL;
             return 0;
         }
@@ -154,7 +155,7 @@ static int splua_handle_sp_opt_newindex(lua_State *L)
                 if (lua_isstring(sp->L, -1))
                 {
                     *iterm = Malloc(sizeof(iterm_t));
-                    (*iterm)->name = sp_lua_tolstring(L, -1);
+                    sp_lua_tolstring(L, -1, &(*iterm)->name);
                     (*iterm)->next = NULL;
                     iterm = &(*iterm)->next;
                 }
@@ -166,17 +167,17 @@ static int splua_handle_sp_opt_newindex(lua_State *L)
         return luaL_error(L, "sp file_logs just support string or table.\n");
     }
 
-    if (0 == strncmp("file_pattern", field->s, field->l))
+    if (0 == strncmp("file_pattern", field.s, field.l))
     {
         if (sp->file_pattern) return 0;
 
-        value = sp_lua_tolstring(L, 3);
-        sp->file_pattern = value->s;
+        sp_lua_tolstring(L, 3, &value);
+        sp->file_pattern = value.s;
         //debug("sp.file_pattern = %s\n", sp->file_pattern);
         return 0;
     }
 
-    return luaL_error(L, "sp no know field: %.*s\n", field->l, field->s);
+    return luaL_error(L, "sp no know field: %.*s\n", field.l, field.s);
 }
 
 
@@ -184,7 +185,7 @@ static int splua_handle_patter_index(lua_State *L)
 {
     struct spectrum *sp;
     struct sp_thread *spt;
-    string_t *field;
+    string_t field;
     int i;
     string_t *name;
 
@@ -195,8 +196,8 @@ static int splua_handle_patter_index(lua_State *L)
 
     sp = spt->sp;
 
-    field = sp_lua_tolstring(L, 2);
-    if (!strncmp("fields", field->s, field->l))
+    sp_lua_tolstring(L, 2, &field);
+    if (!strncmp("fields", field.s, field.l))
     {
 
         lua_newtable(L);
@@ -214,7 +215,7 @@ static int splua_handle_patter_index(lua_State *L)
         return 1;
     }
 
-    if (!strncmp("pattern", field->s, field->l))
+    if (!strncmp("pattern", field.s, field.l))
     {
         lua_pushstring(L, sp->pattern);
         return 1;
@@ -226,42 +227,42 @@ static int splua_handle_patter_index(lua_State *L)
 static int splua_handle_sp_index(lua_State *L)
 {
     struct sp_thread *spt;
-    string_t *field;
+    string_t field;
 
     spt = splua_get_data(L);
-    field = sp_lua_tolstring(L, 2);
+    sp_lua_tolstring(L, 2, &field);
 
-    if (!strncmp("num", field->s, field->l))
+    if (!strncmp("num", field.s, field.l))
     {
         lua_pushnumber(L, spt->records_num);
         return 1;
     }
 
-    if (!strncmp("num_droped", field->s, field->l))
+    if (!strncmp("num_droped", field.s, field.l))
     {
         lua_pushnumber(L, spt->records_num_droped);
         return 1;
     }
 
-    if (!strncmp("num_nomatch", field->s, field->l))
+    if (!strncmp("num_nomatch", field.s, field.l))
     {
         lua_pushnumber(L, spt->records_num_nomatch);
         return 1;
     }
 
-    if (!strncmp("num_errmatch", field->s, field->l))
+    if (!strncmp("num_errmatch", field.s, field.l))
     {
         lua_pushnumber(L, spt->records_num_errmatch);
         return 1;
     }
 
-    if (!strncmp("threads", field->s, field->l))
+    if (!strncmp("threads", field.s, field.l))
     {
         lua_pushnumber(L, spt->sp->thread_num);
         return 1;
     }
 
-    if (!strncmp("time", field->s, field->l))
+    if (!strncmp("time", field.s, field.l))
     {
         lua_pushnumber(L, spt->sp->thread_num);
         return 1;

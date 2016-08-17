@@ -60,7 +60,7 @@ typedef struct string string_t;
 typedef struct number number_t;
 
 struct item{
-    struct string *name;
+    struct string name;
     union {
         struct string s;
         struct number n;
@@ -143,6 +143,7 @@ struct spectrum{
     int option_nomatch_output;
     int option_slice_size;
     int option_log_level;
+    int option_src_type;
     const char *option_server_host;
     const char *option_client_cmd;
 
@@ -159,7 +160,7 @@ int pattern_compile(struct spectrum *spectrum, const char *path);
 int spectrum_start_server(struct spectrum *sp);
 int spectrum_start_client(struct spectrum *sp);
 
-string_t *sp_lua_tolstring(lua_State *L, int index);
+int sp_lua_tolstring(lua_State *L, int index, string_t *ss);
 int sp_stage_lua_call(lua_State *L, const char *name);
 int sp_stage_lua_callx(lua_State *L, const char *name, int nargs, int nresults);
 

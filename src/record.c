@@ -11,6 +11,7 @@
 #include <string.h>
 #include "spectrum.h"
 
+#include "jansson.h"
 
 static inline void record_lua_spt_set(lua_State *L, struct sp_thread *sp);
 static inline struct sp_thread *record_lua_spt_get(lua_State *L);
@@ -44,10 +45,87 @@ static void record_destory(record_t *record)
 }
 
 
+static record_t *record_read_json(struct sp_thread *spt, const char *src, int64_t len)
+{
+    record_t *record;
+    const char *k;
+    json_t *j, *v;
+    struct item *item;
+
+    j = json_loadb(src, len, 0, NULL);
+    if (!j)
+    {
+        ++spt->records_num_errmatch;
+        return NULL;
+    }
+
+
+    record = record_new();
+
+    json_object_foreach(j, k, v) {
+        switch (json_typeof(v)) {
+            case JSON_STRING:
+                item = record_vars_append(record, VAR_TYPE_STR, 0);
+
+                item->name.s = (char *)k;
+                item->name.l = strlen(k);
+
+                item->v.s.s = (char *)json_string_value(v);
+                item->v.s.l = strlen(item->v.s.s);
+                break;
+
+            case JSON_INTEGER:
+                item = record_vars_append(record, VAR_TYPE_NUM, 0);
+
+                item->name.s = (char *)k;
+                item->name.l = strlen(k);
+
+                item->v.n.n = json_integer_value(v);
+                break;
+
+//            case JSON_REAL:
+//                print_json_real(element, indent);
+//                break;
+
+            case JSON_TRUE:
+                item = record_vars_append(record, VAR_TYPE_NUM, 0);
+
+                item->name.s = (char *)k;
+                item->name.l = strlen(k);
+
+                item->v.n.n = 1;
+                break;
+            case JSON_FALSE:
+                item = record_vars_append(record, VAR_TYPE_NUM, 0);
+
+                item->name.s = (char *)k;
+                item->name.l = strlen(k);
+
+                item->v.n.n = 1;
+                break;
+
+            //case JSON_NULL:
+            //    print_json_null(element, indent);
+            //    break;
+
+            //default:
+            //    fprintf(stderr, "unrecognized JSON type %d\n", json_typeof(element));
+        }
+
+    }
+
+
+    return record;
 
 
 
-static int record_read(struct sp_thread *spt, const char *src, int64_t len)
+
+
+
+}
+
+
+static record_t *record_read_pcre(struct sp_thread *spt, const char *src, int64_t len)
 {
     int rc, i;
     struct item *item;
@@ -75,12 +153,35 @@ static int record_read(struct sp_thread *spt, const char *src, int64_t len)
         return 0;
     }
 
+    ++spt->records_num;
     record = record_new();
     for (i = 1; i < rc; i++) {             //分别取出捕获分组 $0整个正则公式 $1第一个()
         item = record_vars_append(record, VAR_TYPE_STR, 0);
-        item->name = spt->sp->fields + i - 1;
+        item->name = *(spt->sp->fields + i - 1);
         item->v.s.s = (char *)src + spt->ovector[2*i];
         item->v.s.l = spt->ovector[2*i+1] - spt->ovector[2*i];
+    }
+
+    return record;
+}
+
+
+
+
+
+static int record_read(struct sp_thread *spt, const char *src, int64_t len)
+{
+    int rc, i;
+    struct item *item;
+    record_t *record;
+
+    if (0 == spt->sp->option_src_type)
+    {
+        record = record_read_pcre(spt, src, len);
+    }
+    else{
+        record = record_read_json(spt, src, len);
+
     }
 
     spt->current = record;
@@ -97,7 +198,6 @@ static int record_read(struct sp_thread *spt, const char *src, int64_t len)
         return 0;
     }
 
-    ++spt->records_num;
     if (spt->record)
     {
         spt->record_tail->next = record;
@@ -150,7 +250,7 @@ struct item *record_vars_get(record_t *record, string_t *s)
     item = record->vars;
     while(item)
     {
-        if ((item->name->l == s->l) && (0 == strncmp(item->name->s, s->s, s->l)))
+        if ((item->name.l == s->l) && (0 == strncmp(item->name.s, s->s, s->l)))
             return item;
         item = item->next;
     }
@@ -204,7 +304,7 @@ void *record_iter(void *_)
         if (lua_isnumber(spt->L, -1))
         {
             iterm = Malloc(sizeof(*iterm));
-            iterm->name = sp_lua_tolstring(spt->L, -2);
+            sp_lua_tolstring(spt->L, -2, &iterm->name);
             iterm->v.n.n = lua_tonumber(spt->L, -1);
             iterm->next = NULL;
             if (spt->summary_tail)

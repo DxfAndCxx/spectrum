@@ -15,10 +15,9 @@
 
 static int loglevel;
 
-string_t *sp_lua_tolstring(lua_State *L, int index)
+int sp_lua_tolstring(lua_State *L, int index, string_t *ss)
 {
     string_t s;
-    string_t *ss;
     s.s = (char *)lua_tolstring(L, index, &s.l);
 
     ss = Malloc(s.l + sizeof(s) + 1);
@@ -26,7 +25,7 @@ string_t *sp_lua_tolstring(lua_State *L, int index)
     ss->l = s.l;
     memcpy(ss->s, s.s, ss->l);
     *(ss->s + ss->l) = 0;
-    return ss;
+    return 0;
 }
 
 int sp_stage_lua_callx(lua_State *L, const char *name, int nargs, int nresults)

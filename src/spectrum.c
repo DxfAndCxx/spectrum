@@ -34,17 +34,14 @@ static struct spectrum *spectrum_init()
 static int spectrum_args_append(void *value, const char *arg)
 {
     iterm_t **iterm;
-    string_t *name;
 
     iterm = (iterm_t **)value;
     while (*iterm)
         iterm = &(*iterm)->next;
 
     *iterm = Malloc(sizeof(iterm_t));
-    name = Malloc(sizeof(*name));
-    name->s = (char *)arg;
-    name->l = strlen(name->s);
-    (*iterm)->name = name;
+    (*iterm)->name.s = (char *)arg;
+    (*iterm)->name.l = strlen((char *)arg);
     (*iterm)->next = NULL;
 
     return 0;
@@ -61,6 +58,7 @@ static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
     sws_ap_str("-r",            &sp->file_rc,             "set rc.lua file. default is ./spectrum.lua.");
     sws_ap_str("-c",            &sp->option_client_cmd,   "set the client cmd and work as client.");
     sws_ap_int("--log",            &sp->option_log_level,   "set log level: 0-5 err, info, debug");
+    sws_ap_bool("--json",            &sp->option_src_type,   "set src type for json");
 
     return sws_ap(argc, argv);
 }
