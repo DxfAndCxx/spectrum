@@ -1,6 +1,7 @@
 LUAFLAGS= -lm -ldl
-LDFLAGS= -lpcre -lpthread $(LUAFLAGS) -L jansson-2.7/src/.lib -ljansson
-CFLAGS= -g -I sws -I luajit/src/ -O0 -I jansson-2.7/src
+LDFLAGS= -lpcre -lpthread $(LUAFLAGS)
+CFLAGS= -I sws -I luajit/src/ -I jansson/jansson/include/
+CFLAGS+= -g  -O0
 
 objects += src/pattern.o
 objects += src/record.o
@@ -11,16 +12,23 @@ objects += src/client.o
 objects += src/splua.o
 
 target=spectrum
+
 lua=luajit/src/libluajit.a
 sws=sws/libsws.a
+jansson=jansson/jansson/lib/libjansson.a
 
-all:$(objects) $(lua) $(sws)
+all:$(objects) $(lua) $(sws) $(jansson)
 	make -C sws
 	gcc -o $(target) $^ $(LDFLAGS)
 
 
 $(lua):
 	make -C luajit
+
+$(jansson):
+	cd jansson; ./configure --prefix=$(shell pwd)/jansson
+	make -C jansson
+	make -C jansson install
 
 
 clean:
