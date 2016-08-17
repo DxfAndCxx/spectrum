@@ -336,8 +336,8 @@ static void spectrum_fork(struct spectrum *sp, spectrum_cmd_handle handle)
 
         handle(sp);
 
-        close(1);
-        close(2);
+        //close(1);
+        //close(2);
     }
     else{
         waitpid(id, 0, 0);
