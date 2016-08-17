@@ -261,8 +261,8 @@ static int spectrum_recod_reads(struct spectrum *sp)
     loginfo("* Records: %lu NoMatch: %lu Err: %lu Drop: %lu\n",
             nums[0], nums[1], nums[2], nums[3]);
 
-    loginfo("* Time: %lus %lums %lumirc\n",
-            sp->time/ 1000000, sp->time % 1000000 / 1000, sp->time % 1000);
+    loginfo("* Time: %lu.%lu\n",
+            sp->time/ 1000000, sp->time % 1000000);
 
 
 
