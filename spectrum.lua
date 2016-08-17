@@ -14,17 +14,17 @@ local retry_num = 0;
 
 function spectrum_record_read()
     local record = sp.record
-    local fields = sp.record.fields
+    local vars = sp.record.vars
     record.append("test_str", 'str')
     record.append("test_int", 23)
 
-    --local pos = fields.upstream_addr:find(',')
+    --local pos = vars.upstream_addr:find(',')
 
 
 
 
-    --local body_bytes_sent = tonumber(fields.body_bytes_sent)
-    --local request_time = tonumber(fields.request_time)
+    --local body_bytes_sent = tonumber(vars.body_bytes_sent)
+    --local request_time = tonumber(vars.request_time)
 
     --if body_bytes_sent < 1024 * 5 then
     --    record.drop()
@@ -43,18 +43,18 @@ function spectrum_record_read()
 
     --record_num = record_num + 1
     print("----------------------")
-    print(fields.http_host)
-    print(fields.body_bytes_sent)
-    print(fields.request_time)
-    print(fields.upstream_status)
-    print(fields.upstream_addr)
+    print(vars.http_host)
+    print(vars.body_bytes_sent)
+    print(vars.request_time)
+    print(vars.upstream_status)
+    print(vars.upstream_addr)
     --if pos ~= nil then
     --    retry_num = retry_num + 1
     --    record.append("retry", '1')
-    --    record.append("upstream_addr_1", fields.upstream_addr:sub(1, pos))
+    --    record.append("upstream_addr_1", vars.upstream_addr:sub(1, pos))
     --else
     --    record.append("retry", '0')
-    --    record.append("upstream_addr_1", fields.upstream_addr)
+    --    record.append("upstream_addr_1", vars.upstream_addr)
     --end
 
 
@@ -74,8 +74,11 @@ end
 
 
 function spectrum_record_iter()
-    print(sp.record.fields.test_str)
-    print(sp.record.fields.test_int)
+    print(sp.record.vars.test_str)
+    print(sp.record.vars.test_int)
+    for _, k in ipairs(sp.record.keys()) do
+        print(k)
+    end
     --record_num = record_num + 1
     --print("cache_status: ", sp.record.vars.cache_status)
 end

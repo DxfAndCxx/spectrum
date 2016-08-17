@@ -40,6 +40,37 @@ static int record_lua_drop(lua_State *L)
 }
 
 
+static int record_lua_keys(lua_State *L)
+{
+    struct sp_thread *spt;
+    struct item *item;
+    record_t *record;
+    int i;
+
+    spt = splua_get_data(L);
+
+    if (NULL == spt) {
+        return luaL_error(L, "no request object found");
+    }
+
+        lua_newtable(L);
+
+    record = spt->current;
+    item = record->vars;
+
+    i = 1;
+    while(item)
+    {
+        lua_pushlstring(L, item->name.s, item->name.l);
+        lua_rawseti(L, -2, i);
+        ++i;
+        item = item->next;
+    }
+    return 1;
+}
+
+
+
 static int record_lua_var_get(lua_State *L)
 {
     record_t *record;
@@ -344,6 +375,8 @@ static void splua_init_set_record(lua_State *L)
     lua_pushcfunction(L, record_lua_drop); // Add drop method
     lua_setfield(L, -2, "drop");
 
+    lua_pushcfunction(L, record_lua_keys); // Add keys method
+    lua_setfield(L, -2, "keys");
 
 
     // create sp.record.vars
@@ -357,7 +390,7 @@ static void splua_init_set_record(lua_State *L)
 
     lua_setmetatable(L, -2);
 
-    lua_setfield(L, -2, "fields");
+    lua_setfield(L, -2, "vars");
     lua_setfield(L, -2, "record"); // record end
     lua_settop(L, 0);
 }
