@@ -44,93 +44,123 @@ static void record_destory(record_t *record)
     free(record);
 }
 
-
-static record_t *record_read_json(struct sp_thread *spt, const char *src, int64_t len)
+static int record_append(struct sp_thread *spt, record_t *record)
 {
-    record_t *record;
-    const char *k;
-    json_t *j, *v;
-    struct item *item;
-
-    j = json_loadb(src, len, 0, NULL);
-    if (!j)
+    spt->current = record;
+    if (sp_stage_lua_call(spt->L, "spectrum_record_read"))
     {
-        ++spt->records_num_errmatch;
-        return NULL;
+        return -1;
     }
 
+    if (spt->flag_drop)
+    {
+        spt->flag_drop = 0;
+        ++spt->records_num_droped;
+        record_destory(record);
+        return 0;
+    }
 
-    record = record_new();
+    ++spt->records_num;
+    if (spt->record)
+    {
+        spt->record_tail->next = record;
+        spt->record_tail = record;
+    }
+    else{
+        spt->record_tail = spt->record = record;
+    }
+    return 0;
+}
 
-    json_object_foreach(j, k, v) {
-        switch (json_typeof(v)) {
+
+static int record_read_json_object(struct sp_thread *spt, record_t *record, json_t *object, const char *prefix)
+{
+    struct item *item;
+    const char *k;
+    json_t *v;
+    int prefix_len;
+    json_type type;
+
+    if (prefix)
+        prefix_len = strlen(prefix);
+
+    json_object_foreach(object, k, v) {
+        type = json_typeof(v);
+        if (JSON_OBJECT == type)
+        {
+            record_read_json_object(spt, record, v, k);
+            continue;
+        }
+
+        if (JSON_STRING == type)
+            item = record_vars_append(record, VAR_TYPE_STR, 0);
+        else
+            item = record_vars_append(record, VAR_TYPE_NUM, 0);
+
+        if (prefix)
+        {
+            item->name.l = strlen(k) + prefix_len + 1;
+            item->name.s = malloc(item->name.l);
+
+            memcpy(item->name.s, prefix, prefix_len);
+            *(item->name.s + prefix_len) = '_';
+            memcpy(item->name.s + prefix_len + 1, k, item->name.l - prefix_len - 1);
+        }
+        else{
+            item->name.s = (char *)k;
+            item->name.l = strlen(k);
+        }
+
+        switch (type) {
             case JSON_STRING:
-                item = record_vars_append(record, VAR_TYPE_STR, 0);
-
-                item->name.s = (char *)k;
-                item->name.l = strlen(k);
-
                 item->v.s.s = (char *)json_string_value(v);
                 item->v.s.l = strlen(item->v.s.s);
                 break;
 
             case JSON_INTEGER:
-                item = record_vars_append(record, VAR_TYPE_NUM, 0);
-
-                item->name.s = (char *)k;
-                item->name.l = strlen(k);
-
                 item->v.n.n = json_integer_value(v);
                 break;
 
             case JSON_REAL:
-                item = record_vars_append(record, VAR_TYPE_NUM, 0);
-
-                item->name.s = (char *)k;
-                item->name.l = strlen(k);
-
                 item->v.n.n = json_real_value(v);
                 break;
 
             case JSON_TRUE:
-                item = record_vars_append(record, VAR_TYPE_NUM, 0);
-
-                item->name.s = (char *)k;
-                item->name.l = strlen(k);
-
                 item->v.n.n = 1;
                 break;
+
             case JSON_FALSE:
-                item = record_vars_append(record, VAR_TYPE_NUM, 0);
-
-                item->name.s = (char *)k;
-                item->name.l = strlen(k);
-
-                item->v.n.n = 1;
+                item->v.n.n = 0;
                 break;
 
-            //case JSON_NULL:
-            //    print_json_null(element, indent);
-            //    break;
-
-            //default:
-            //    fprintf(stderr, "unrecognized JSON type %d\n", json_typeof(element));
+            default:
+                item->v.n.n = 0;
         }
-
     }
-
-
-    return record;
-
-
-
-
-
-
+    return 0;
 }
 
 
-static record_t *record_read_pcre(struct sp_thread *spt, const char *src, int64_t len)
+static int record_read_json(struct sp_thread *spt, const char *src, int64_t len)
+{
+    json_t *j;
+    record_t *record;
+
+    j = json_loadb(src, len, 0, NULL);
+    if (!j)
+    {
+        ++spt->records_num_errmatch;
+        return -1;
+    }
+
+    record = record_new();
+    record_read_json_object(spt, record, j, NULL);
+    record_append(spt, record);
+    return 0;
+}
+
+
+static int record_read_pcre(struct sp_thread *spt, const char *src, int64_t len)
 {
     int rc, i;
     struct item *item;
@@ -166,55 +196,20 @@ static record_t *record_read_pcre(struct sp_thread *spt, const char *src, int64_
         item->v.s.l = spt->ovector[2*i+1] - spt->ovector[2*i];
     }
 
-    return record;
+    return record_append(spt, record);
 }
-
-
-
 
 
 static int record_read(struct sp_thread *spt, const char *src, int64_t len)
 {
-    int rc, i;
-    struct item *item;
-    record_t *record;
-
     if (0 == spt->sp->option_src_type)
     {
-        record = record_read_pcre(spt, src, len);
+        record_read_pcre(spt, src, len);
     }
     else{
-        record = record_read_json(spt, src, len);
-
+        record_read_json(spt, src, len);
     }
 
-    if (!record) return 0;
-
-    ++spt->records_num;
-
-    spt->current = record;
-    if (sp_stage_lua_call(spt->L, "spectrum_record_read"))
-    {
-        return -1;
-    }
-
-    if (spt->flag_drop)
-    {
-        spt->flag_drop = 0;
-        ++spt->records_num_droped;
-        record_destory(record);
-        return 0;
-    }
-
-    if (spt->record)
-    {
-        spt->record_tail->next = record;
-        spt->record_tail = record;
-    }
-    else{
-        spt->record_tail = spt->record = record;
-    }
-    return 0;
 }
 
 
@@ -235,10 +230,8 @@ void *record_reads(void *_spt)
         {
             if ('\n' == *e || 0 == *e)
             {
-                if (record_read(spt, s, e - s))
-                {
-                    return NULL;
-                }
+                ++spt->lines_num;
+                record_read(spt, s, e - s);
                 s = e + 1;
             }
             ++e;

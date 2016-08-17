@@ -44,7 +44,7 @@ int sp_stage_lua_callx(lua_State *L, const char *name, int nargs, int nresults)
     }
 
     lua_pop(L, 1);
-    return -1;
+    return 0;
 }
 
 int sp_stage_lua_call(lua_State *L, const char *name)

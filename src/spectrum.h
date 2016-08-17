@@ -87,6 +87,7 @@ struct sp_thread{
     record_t *record;
     record_t *record_tail;
 
+    int64_t lines_num;
     int64_t records_num;
     int64_t records_num_nomatch;
     int64_t records_num_errmatch;

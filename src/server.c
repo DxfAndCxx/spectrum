@@ -176,7 +176,7 @@ static int spectrum_pthread_create(struct spectrum *sp, void *handle)
     int i;
     struct sp_thread *spt;
 
-    debug("spectrum_pthread_create: create %d threads\n", sp->thread_num);
+    debug("* create %d threads\n", sp->thread_num);
     for (i=0; i < sp->thread_num; ++i)
     {
         spt = sp->threads + i;
@@ -234,7 +234,7 @@ static iterm_t *spectrum_iterm_get(struct sp_thread *spt, string_t *s)
 static int spectrum_recod_reads(struct spectrum *sp)
 {
     struct timeval time_start, time_end;
-    int64_t nums[4] = {0};
+    int64_t nums[5] = {0};
     struct sp_thread *spt;
     int i;
 
@@ -257,9 +257,10 @@ static int spectrum_recod_reads(struct spectrum *sp)
         nums[1] += spt->records_num_nomatch;
         nums[2] += spt->records_num_errmatch;
         nums[3] += spt->records_num_droped;
+        nums[4] += spt->lines_num;
     }
-    loginfo("* Records: %lu NoMatch: %lu Err: %lu Drop: %lu\n",
-            nums[0], nums[1], nums[2], nums[3]);
+    loginfo("* Lines: %lu Records: %lu NoMatch: %lu Err: %lu Drop: %lu\n",
+            nums[4], nums[0], nums[1], nums[2], nums[3]);
 
     loginfo("* Time: %lu.%lu\n",
             sp->time/ 1000000, sp->time % 1000000);
