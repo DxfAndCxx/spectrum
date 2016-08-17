@@ -1,6 +1,6 @@
 LUAFLAGS= -lm -ldl
 LDFLAGS= -lpcre -lpthread $(LUAFLAGS)
-CFLAGS= -I sws -I luajit/src/ -I jansson/jansson/include/
+CFLAGS= -I sws -I luajit/src/ -I jansson/src
 CFLAGS+= -g  -O0
 
 objects += src/pattern.o
@@ -26,7 +26,7 @@ $(lua):
 	make -C luajit
 
 $(jansson):
-	cd jansson; ./configure --prefix=$(shell pwd)/jansson
+	cd jansson; ./configure --prefix=$$(pwd)/jansson
 	make -C jansson
 	make -C jansson install
 
