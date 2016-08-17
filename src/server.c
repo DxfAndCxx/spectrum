@@ -275,7 +275,6 @@ static void spectrum_recod_iter(struct spectrum *sp)
     int i;
     iterm_t *iterm1;
     iterm_t *iterm2;
-    loginfo("recv iter cmd\n");
 
     spectrum_pthread_create(sp, record_iter);
 

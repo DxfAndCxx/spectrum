@@ -15,6 +15,8 @@ local retry_num = 0;
 function spectrum_record_read()
     local record = sp.record
     local fields = sp.record.fields
+    record.append("test_str", 'str')
+    record.append("test_int", 23)
 
     --local pos = fields.upstream_addr:find(',')
 
@@ -68,10 +70,12 @@ end
 
 
 
---function spectrum_record_iter()
---    record_num = record_num + 1
---    print("cache_status: ", sp.record.vars.cache_status)
---end
+function spectrum_record_iter()
+    print(sp.record.fields.test_str)
+    print(sp.record.fields.test_int)
+    --record_num = record_num + 1
+    --print("cache_status: ", sp.record.vars.cache_status)
+end
 --
 --function spectrum_record_iter_end()
 --    record_num = record_num + 1

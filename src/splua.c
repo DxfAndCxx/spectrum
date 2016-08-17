@@ -99,8 +99,12 @@ static int record_lua_append(lua_State *L)
     value_type = lua_type(L, 2);
     switch (value_type) {
     case LUA_TNUMBER:
-    case LUA_TSTRING:
+        item = record_vars_append(record, VAR_TYPE_NUM, 0);
+        sp_lua_tolstring(L, 1, &item->name);
+        item->v.n.n =  lua_tonumber(L, 2);
+        break;
 
+    case LUA_TSTRING:
         item = record_vars_append(record, VAR_TYPE_STR, 0);
         sp_lua_tolstring(L, 1, &item->name);
         sp_lua_tolstring(L, 2, &item->v.s);
