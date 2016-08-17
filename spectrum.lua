@@ -42,6 +42,7 @@ function spectrum_record_read()
     --record_num = record_num + 1
     print(fields.http_host)
     print(fields.body_bytes_sent)
+    print(fields.request_time)
     --if pos ~= nil then
     --    retry_num = retry_num + 1
     --    record.append("retry", '1')

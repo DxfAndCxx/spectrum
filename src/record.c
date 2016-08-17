@@ -83,9 +83,14 @@ static record_t *record_read_json(struct sp_thread *spt, const char *src, int64_
                 item->v.n.n = json_integer_value(v);
                 break;
 
-//            case JSON_REAL:
-//                print_json_real(element, indent);
-//                break;
+            case JSON_REAL:
+                item = record_vars_append(record, VAR_TYPE_NUM, 0);
+
+                item->name.s = (char *)k;
+                item->name.l = strlen(k);
+
+                item->v.n.n = json_real_value(v);
+                break;
 
             case JSON_TRUE:
                 item = record_vars_append(record, VAR_TYPE_NUM, 0);
