@@ -3,3 +3,6 @@ core*
 jansson/*
 *.o
 *.a
+luajit/*
+modules/lib/
+lua-cjson/*
