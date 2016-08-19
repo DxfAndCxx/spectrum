@@ -347,6 +347,18 @@ static void spectrum_fork(struct spectrum *sp, spectrum_cmd_handle handle)
 
 static void spectrum_handle_cmd(struct spectrum *sp, const char *cmd)
 {
+
+    if (!strncmp("GET /iter HTTP/1.1", cmd, 18))
+    {
+        const char *response = "HTTP/1.0 200 OK\r\n"
+            "Content-Type: text/plain charset=utf-8\r\n"
+            "\r\n";
+        write(sp->confd, response, strlen(response));
+        spectrum_fork(sp, spectrum_recod_iter);
+        return;
+    }
+
+
     if (!strncmp("iter\r\n", cmd, 6))
     {
         spectrum_fork(sp, spectrum_recod_iter);
@@ -368,7 +380,7 @@ static void spectrum_handle_cmd(struct spectrum *sp, const char *cmd)
 
 static int spectrum_server_cycle(struct spectrum *sp)
 {
-    char buf[30];
+    char buf[1024 * 4];
 
     if (!sp->option_server_cycle)
         return 0;
