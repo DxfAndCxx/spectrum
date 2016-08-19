@@ -32,8 +32,8 @@ $(jansson):
 	make -C jansson install
 
 $(lua_cjson):
-	make -C lua-cjson
-	make -C install PREFIX=../modules
+	make -C lua-cjson PREFIX=../luajit/src/
+	cp lua-cjson/cjson.so modules
 
 
 clean:
