@@ -80,10 +80,9 @@ int main(int argc, const char **argv)
 
     set_loglevel(sp->option_log_level);
 
-    sp->L = splua_init(sp, sp);
-    if (!sp->L) return -1;
+    sp->lua_env = splua_init(sp, sp);
 
-    sp_stage_lua_call(sp->L, "spectrum_config");
+    //sp_stage_lua_call(sp->L, "spectrum_config");
 
     if (sp->option_client_cmd)
     {

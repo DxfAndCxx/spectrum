@@ -184,17 +184,17 @@ static int splua_handle_sp_opt_newindex(lua_State *L)
 
         if (lua_istable(L, -1))
         {
-            lua_pushnil(sp->L);
-            while (lua_next(sp->L, -2))
+            lua_pushnil(sp->lua_env.L);
+            while (lua_next(sp->lua_env.L, -2))
             {
-                if (lua_isstring(sp->L, -1))
+                if (lua_isstring(sp->lua_env.L, -1))
                 {
                     *iterm = Malloc(sizeof(iterm_t));
                     sp_lua_tolstring(L, -1, &(*iterm)->name);
                     (*iterm)->next = NULL;
                     iterm = &(*iterm)->next;
                 }
-                lua_pop(sp->L, 1);
+                lua_pop(sp->lua_env.L, 1);
             }
             return 0;
         }
@@ -395,16 +395,140 @@ static void splua_init_set_record(lua_State *L)
     lua_settop(L, 0);
 }
 
-
-lua_State *splua_init(struct spectrum *sp, void *data)
+static void splua_script(script_t ***pos, lua_State *L, const char *path, int *index)
 {
+    int level;
+    int nresult;
+    script_t *script;
+
+    lua_getglobal(L, "scripts");
+    level = lua_gettop(L);
+    if (luaL_dofile(L, path))
+    {
+        printf("luaL_loadfile `%s' err: %s\n", path, lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return ;
+    }
+    nresult = lua_gettop(L) - level;
+    debug("* loadfile: %s nresult: %d\n", path, nresult);
+
+    while (nresult)
+    {
+        --nresult;
+
+        if (!lua_istable(L, -1))
+        {
+            lua_pop(L, 1);
+            continue;
+        }
+
+        script = malloc(sizeof(*script));
+        memset(script, 0, sizeof(*script));
+
+        **pos = script;
+        *pos = &script->next;
+
+
+        //lua_getfield(L, -1, "_order");
+        //if (lua_isnumber(L, -1))
+        //    script->order = lua_tonumber(L, -1);
+        //lua_pop(L, 1);
+
+        lua_getfield(L, -1, "read");
+        if (lua_isfunction(L, -1)) script->stages |= STAGE_READ;
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "iter");
+        if (lua_isfunction(L, -1)) script->stages |= STAGE_ITER;
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "map");
+        if (lua_isfunction(L, -1)) script->stages |= STAGE_MAP;
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "reduce");
+        if (lua_isfunction(L, -1)) script->stages |= STAGE_REDUCE;
+        lua_pop(L, 1);
+
+        sprintf(script->name, "script_mode_%d", ++*index);
+        debug("* Append Mod: %s\n", script->name);
+        lua_setfield(L, -2 - nresult, script->name);
+    }
+
+    lua_pop(L, 1);
+}
+
+
+static script_t *splua_scripts(const char *dirpath, lua_State *L)
+{
+    DIR * dir;
+    struct dirent * ptr;
+    int i = 0;
+    char path[1024];
+    script_t *head = NULL;
+    script_t **pos;
+    script_t **ppos;
+    script_t *t;
+
+    pos = &head;
+
+    lua_newtable(L);    /* sp.vars */
+    lua_setglobal(L, "scripts");
+
+    dir = opendir(dirpath);
+    while((ptr = readdir(dir)) != NULL)
+    {
+        if (DT_REG != ptr->d_type) continue;
+        if (ptr->d_name[0] == '.') continue;
+
+        if (strlen(dirpath) + strlen(ptr->d_name) + 10 > sizeof(path))
+        {
+            logerr("path to %s is too long. Not Load.", ptr->d_name);
+            continue;
+        }
+        strcpy(path, dirpath);
+        *(path + strlen(dirpath)) = '/';
+        strcpy(path + strlen(dirpath) + 1, ptr->d_name);
+
+        splua_script(&pos, L, path, &i);
+    }
+    closedir(dir);
+
+    pos = &head;
+
+    while (*pos)
+    {
+        ppos = &(*pos)->next;
+        while(*ppos)
+        {
+            if ((*pos)->order > (*ppos)->order)
+            {
+                t = (*pos)->next;
+                (*pos)->next = (*ppos)->next;
+                (*ppos)->next = t;
+
+                t = *ppos;
+                *ppos = *pos;
+                *pos = t;
+            }
+            ppos = &(*ppos)->next;
+        }
+        pos = &(*pos)->next;
+    }
+    return head;
+}
+
+
+lua_env_t splua_init(struct spectrum *sp, void *data)
+{
+    lua_env_t env;
     lua_State *L;
 
-    if (0 != access(sp->file_rc, R_OK))
-    {
-        logerr("splua_init: cannot access `%s'\n", sp->file_rc);
-        return NULL;
-    }
+    //if (0 != access(sp->file_rc, R_OK))
+    //{
+    //    logerr("splua_init: cannot access `%s'\n", sp->file_rc);
+    //    return ;
+    //}
 
     L = luaL_newstate();
     luaL_openlibs(L);
@@ -417,15 +541,10 @@ lua_State *splua_init(struct spectrum *sp, void *data)
     splua_init_set_pattern(L);
     splua_init_set_record(L);
 
+    env.scripts = splua_scripts(sp->file_rc, L);
+    env.L = L;
 
-    if (0 != luaL_dofile(L, sp->file_rc))
-    {
-        printf("dofile `%s' err: %s\n", sp->file_rc, lua_tostring(L, -1));
-        lua_pop(L, 1);
-        return NULL;
-    }
-
-    return L;
+    return env;
 }
 
 

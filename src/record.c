@@ -46,19 +46,37 @@ static void record_destory(record_t *record)
 
 static int record_append(struct sp_thread *spt, record_t *record)
 {
-    spt->current = record;
-    if (sp_stage_lua_call(spt->L, "spectrum_record_read"))
-    {
-        return -1;
-    }
+    lua_State *L;
+    script_t *script;
 
-    if (spt->flag_drop)
+    script = spt->lua_env.scripts;
+    L = spt->lua_env.L;
+
+    spt->current = record;
+
+    lua_getglobal(L, "scripts");
+    while (script)
     {
-        spt->flag_drop = 0;
-        ++spt->records_num_droped;
-        record_destory(record);
-        return 0;
+        if (script->stages & STAGE_READ)
+        {
+            lua_getfield(L, -1, script->name);
+            lua_getfield(L, -1, "read");
+            lua_pcall(L, 0, 0, 0);
+            lua_pop(L, 1);
+
+            if (spt->flag_drop)
+            {
+                spt->flag_drop = 0;
+                ++spt->records_num_droped;
+                record_destory(record);
+                lua_pop(L, 1);
+                return 0;
+            }
+        }
+        script = script->next;
     }
+    lua_pop(L, 1);
+
 
     ++spt->records_num;
     if (spt->record)
@@ -239,7 +257,7 @@ void *record_reads(void *_spt)
         iterm = iterm->next;
     }
 
-    if (sp_stage_lua_call(spt->L, "spectrum_record_read_end")) return NULL;
+    //if (sp_stage_lua_call(spt->L, "spectrum_record_read_end")) return NULL;
 
     return NULL;
 }
@@ -283,42 +301,77 @@ void *record_iter(void *_)
 {
     struct sp_thread *spt;
     record_t *record;
+    lua_State *L;
+    script_t *script;
 
     spt = _;
     record = spt->record;
+
+    L = spt->lua_env.L;
+    lua_getglobal(L, "scripts");
+
     while (record)
     {
         spt->current = record;
-        sp_stage_lua_call(spt->L, "spectrum_record_iter");
+
+        script = spt->lua_env.scripts;
+        while (script)
+        {
+            if (script->stages & STAGE_ITER)
+            {
+                lua_getfield(L, -1, script->name);
+                lua_getfield(L, -1, "iter");
+                lua_pcall(L, 0, 0, 0);
+                lua_pop(L, 1);
+            }
+            script = script->next;
+        }
+
         record = record->next;
     }
 
-    if(sp_stage_lua_callx(spt->L, "spectrum_summary", 0, 1)) return NULL;
-
-    if (!lua_istable(spt->L, -1)) return NULL;//ignore
-
-
-    iterm_t *iterm;
-    lua_pushnil(spt->L);
-    while (lua_next(spt->L, -2))
+    script = spt->lua_env.scripts;
+    while (script)
     {
-        if (lua_isnumber(spt->L, -1))
+        if (script->stages & STAGE_MAP)
         {
-            iterm = Malloc(sizeof(*iterm));
-            sp_lua_tolstring(spt->L, -2, &iterm->name);
-            iterm->v.n.n = lua_tonumber(spt->L, -1);
-            iterm->next = NULL;
-            if (spt->summary_tail)
-            {
-                spt->summary_tail->next = iterm;
-                spt->summary_tail = iterm;
-            }
-            else{
-                spt->summary_head = spt->summary_tail = iterm;
-            }
+            lua_getfield(L, -1, script->name);
+            lua_getfield(L, -1, "map");
+            lua_pcall(L, 0, 0, 0);
+            lua_pop(L, 1);
         }
-        lua_pop(spt->L, 1);
+        script = script->next;
     }
+
+    lua_pop(L, 1);
+
+
+    //if(sp_stage_lua_callx(spt->L, "spectrum_summary", 0, 1)) return NULL;
+
+    //if (!lua_istable(spt->L, -1)) return NULL;//ignore
+
+
+    //iterm_t *iterm;
+    //lua_pushnil(spt->L);
+    //while (lua_next(spt->L, -2))
+    //{
+    //    if (lua_isnumber(spt->L, -1))
+    //    {
+    //        iterm = Malloc(sizeof(*iterm));
+    //        sp_lua_tolstring(spt->L, -2, &iterm->name);
+    //        iterm->v.n.n = lua_tonumber(spt->L, -1);
+    //        iterm->next = NULL;
+    //        if (spt->summary_tail)
+    //        {
+    //            spt->summary_tail->next = iterm;
+    //            spt->summary_tail = iterm;
+    //        }
+    //        else{
+    //            spt->summary_head = spt->summary_tail = iterm;
+    //        }
+    //    }
+    //    lua_pop(spt->L, 1);
+    //}
 
     return 0;
 }

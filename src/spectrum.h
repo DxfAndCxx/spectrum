@@ -26,6 +26,12 @@
 #define LogLevelDebug 5
 
 
+#define STAGE_READ   1
+#define STAGE_ITER   (1 < 1)
+#define STAGE_MAP    (1 < 2)
+#define STAGE_REDUCE (1 < 3)
+
+
 int __log(int level, const char *fmt, ...);
 void set_loglevel(int level);
 
@@ -81,6 +87,19 @@ struct dict{
 
 
 
+typedef struct script{
+    char name[256];
+    int  stages;
+    double  order;
+    struct script *next;
+}script_t;
+
+typedef struct lua_env{
+    lua_State *L;
+    script_t *scripts;
+}lua_env_t;
+
+
 
 struct sp_thread{
     record_t *current;
@@ -95,7 +114,7 @@ struct sp_thread{
 
     iterm_t *logs;
 
-    lua_State *L;
+    lua_env_t lua_env;
 
     pthread_t tid;
 
@@ -120,7 +139,7 @@ struct spectrum{
     unsigned short thread_num;
     struct sp_thread *threads;
 
-    lua_State *L;
+    lua_env_t lua_env;
 
     unsigned long time;
 
@@ -165,7 +184,7 @@ int sp_lua_tolstring(lua_State *L, int index, string_t *ss);
 int sp_stage_lua_call(lua_State *L, const char *name);
 int sp_stage_lua_callx(lua_State *L, const char *name, int nargs, int nresults);
 
-lua_State *splua_init(struct spectrum *sp, void *data);
+lua_env_t splua_init(struct spectrum *sp, void *data);
 
 #endif
 

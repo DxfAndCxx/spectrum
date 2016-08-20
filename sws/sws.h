@@ -13,6 +13,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdarg.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <unistd.h>
 
 #include "file.h"
 #include "net.h"

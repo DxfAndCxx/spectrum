@@ -24,14 +24,14 @@ function _M.read()
 
 
     record.append("cache_status", cache_status.status(vars.via))
-    
-    
+
+
     local kbps = string.match(vars.request_uri, '_(%d+)[_.]mp4[/?]')
 
     if not kbps then
-       record.drop() 
+       record.drop()
      end
-    
+
     record.append("min_speed", kbps * 1000 / 8)
 
     local upstream_addr = vars.upstreaam_addr
@@ -41,6 +41,7 @@ function _M.read()
       _, count = string.gsub(vars.upstreaam_addr, ',', ',')
     end
     record.append("retry", count)
+    print("###############")
 end
 
-return _M
+return _M, _M
