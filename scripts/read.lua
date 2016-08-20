@@ -41,7 +41,6 @@ function _M.read()
       _, count = string.gsub(vars.upstreaam_addr, ',', ',')
     end
     record.append("retry", count)
-    print("###############")
 end
 
-return _M, _M
+return _M

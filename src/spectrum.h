@@ -97,6 +97,14 @@ typedef struct script{
 typedef struct lua_env{
     lua_State *L;
     script_t *scripts;
+    int scripts_n;
+
+    script_t *scripts_read;
+    script_t *scripts_filter;
+
+    script_t *scripts_iter;
+    script_t *scripts_map;
+    script_t *scripts_reduce;
 }lua_env_t;
 
 
@@ -184,7 +192,7 @@ int sp_lua_tolstring(lua_State *L, int index, string_t *ss);
 int sp_stage_lua_call(lua_State *L, const char *name);
 int sp_stage_lua_callx(lua_State *L, const char *name, int nargs, int nresults);
 
-lua_env_t splua_init(struct spectrum *sp, void *data);
+int splua_init(struct spectrum *sp, void *data, lua_env_t* env);
 
 #endif
 

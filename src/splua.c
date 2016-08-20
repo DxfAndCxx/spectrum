@@ -410,7 +410,7 @@ static void splua_script(script_t ***pos, lua_State *L, const char *path, int *i
         return ;
     }
     nresult = lua_gettop(L) - level;
-    debug("* loadfile: %s nresult: %d\n", path, nresult);
+    debug("* Loadfile: %s nresult: %d\n", path, nresult);
 
     while (nresult)
     {
@@ -429,37 +429,104 @@ static void splua_script(script_t ***pos, lua_State *L, const char *path, int *i
         *pos = &script->next;
 
 
-        //lua_getfield(L, -1, "_order");
-        //if (lua_isnumber(L, -1))
-        //    script->order = lua_tonumber(L, -1);
-        //lua_pop(L, 1);
-
-        lua_getfield(L, -1, "read");
-        if (lua_isfunction(L, -1)) script->stages |= STAGE_READ;
+        lua_getfield(L, -1, "_order");
+        if (lua_isnumber(L, -1))
+            script->order = lua_tonumber(L, -1);
         lua_pop(L, 1);
 
-        lua_getfield(L, -1, "iter");
-        if (lua_isfunction(L, -1)) script->stages |= STAGE_ITER;
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "map");
-        if (lua_isfunction(L, -1)) script->stages |= STAGE_MAP;
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "reduce");
-        if (lua_isfunction(L, -1)) script->stages |= STAGE_REDUCE;
-        lua_pop(L, 1);
 
         sprintf(script->name, "script_mode_%d", ++*index);
-        debug("* Append Mod: %s\n", script->name);
         lua_setfield(L, -2 - nresult, script->name);
+
+        debug("* Append Mod: %s\n", script->name);
     }
 
     lua_pop(L, 1);
 }
 
 
-static script_t *splua_scripts(const char *dirpath, lua_State *L)
+
+static int splua_scripts_stage(lua_env_t *env)
+{
+    lua_State *L;
+    script_t *s;
+    void *m;
+
+    L = env->L;
+    m = malloc(sizeof(void *) * 3 * env->scripts_n);
+    memset(m, 0, sizeof(void *) * 3 * env->scripts_n);
+
+    env->scripts_iter = m;
+    env->scripts_map = m + env->scripts_n;
+    env->scripts_reduce = m + env->scripts_n * 2;
+
+    s = env->scripts;
+
+    while (s)
+    {
+        lua_getglobal(L, "scripts");
+        lua_getfield(L, -1, s->name);
+
+        lua_getfield(L, -1, "read");
+        if (lua_isfunction(L, -1))
+        {
+            if (env->scripts_read)
+            {
+                logerr("`read' function should just one!.");
+                return -1;
+            }
+            env->scripts_read = s;
+        }
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "filter");
+        if (lua_isfunction(L, -1))
+        {
+            if (env->scripts_filter)
+            {
+                logerr("`filter' function should just one!.");
+                return -1;
+            }
+            env->scripts_filter = s;
+        }
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "iter");
+        if (lua_isfunction(L, -1))
+        {
+            env->scripts_iter = s;
+            ++env->scripts_iter;
+        }
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "map");
+        if (lua_isfunction(L, -1))
+        {
+            env->scripts_map = s;
+            ++env->scripts_map;
+        }
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "reduce");
+        if (lua_isfunction(L, -1))
+        {
+            env->scripts_reduce = s;
+            ++env->scripts_reduce;
+        }
+        lua_pop(L, 1);
+
+        s = s->next;
+    }
+    lua_settop(L, 0);
+
+    env->scripts_iter = m;
+    env->scripts_map = m + env->scripts_n;
+    env->scripts_reduce = m + env->scripts_n * 2;
+    return 0;
+}
+
+
+static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
 {
     DIR * dir;
     struct dirent * ptr;
@@ -515,20 +582,21 @@ static script_t *splua_scripts(const char *dirpath, lua_State *L)
         }
         pos = &(*pos)->next;
     }
-    return head;
+
+    env->scripts = head;
+    env->scripts_n = i;
+
+    return splua_scripts_stage(env);
 }
 
 
-lua_env_t splua_init(struct spectrum *sp, void *data)
-{
-    lua_env_t env;
-    lua_State *L;
 
-    //if (0 != access(sp->file_rc, R_OK))
-    //{
-    //    logerr("splua_init: cannot access `%s'\n", sp->file_rc);
-    //    return ;
-    //}
+
+
+int splua_init(struct spectrum *sp, void *data, lua_env_t *env)
+{
+    lua_State *L;
+    int res;
 
     L = luaL_newstate();
     luaL_openlibs(L);
@@ -541,10 +609,11 @@ lua_env_t splua_init(struct spectrum *sp, void *data)
     splua_init_set_pattern(L);
     splua_init_set_record(L);
 
-    env.scripts = splua_scripts(sp->file_rc, L);
-    env.L = L;
+    env->L = L;
+    res = splua_scripts(env, sp->file_rc, L);
+    lua_settop(L, 0);
 
-    return env;
+    return res;
 }
 
 

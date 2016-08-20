@@ -49,31 +49,25 @@ static int record_append(struct sp_thread *spt, record_t *record)
     lua_State *L;
     script_t *script;
 
-    script = spt->lua_env.scripts;
+    script = spt->lua_env.scripts_read;
     L = spt->lua_env.L;
 
     spt->current = record;
 
     lua_getglobal(L, "scripts");
-    while (script)
-    {
-        if (script->stages & STAGE_READ)
-        {
-            lua_getfield(L, -1, script->name);
-            lua_getfield(L, -1, "read");
-            lua_pcall(L, 0, 0, 0);
-            lua_pop(L, 1);
 
-            if (spt->flag_drop)
-            {
-                spt->flag_drop = 0;
-                ++spt->records_num_droped;
-                record_destory(record);
-                lua_pop(L, 1);
-                return 0;
-            }
-        }
-        script = script->next;
+    lua_getfield(L, -1, script->name);
+    lua_getfield(L, -1, "read");
+    lua_pcall(L, 0, 0, 0);
+    lua_pop(L, 1);
+
+    if (spt->flag_drop)
+    {
+        spt->flag_drop = 0;
+        ++spt->records_num_droped;
+        record_destory(record);
+        lua_pop(L, 1);
+        return 0;
     }
     lua_pop(L, 1);
 
@@ -314,33 +308,27 @@ void *record_iter(void *_)
     {
         spt->current = record;
 
-        script = spt->lua_env.scripts;
+        script = spt->lua_env.scripts_map;
         while (script)
         {
-            if (script->stages & STAGE_ITER)
-            {
-                lua_getfield(L, -1, script->name);
-                lua_getfield(L, -1, "iter");
-                lua_pcall(L, 0, 0, 0);
-                lua_pop(L, 1);
-            }
-            script = script->next;
+            lua_getfield(L, -1, script->name);
+            lua_getfield(L, -1, "iter");
+            lua_pcall(L, 0, 0, 0);
+            lua_pop(L, 1);
+            ++script;
         }
 
         record = record->next;
     }
 
-    script = spt->lua_env.scripts;
+    script = spt->lua_env.scripts_reduce;
     while (script)
     {
-        if (script->stages & STAGE_MAP)
-        {
-            lua_getfield(L, -1, script->name);
-            lua_getfield(L, -1, "map");
-            lua_pcall(L, 0, 0, 0);
-            lua_pop(L, 1);
-        }
-        script = script->next;
+        lua_getfield(L, -1, script->name);
+        lua_getfield(L, -1, "map");
+        lua_pcall(L, 0, 0, 0);
+        lua_pop(L, 1);
+        ++script;
     }
 
     lua_pop(L, 1);
