@@ -448,8 +448,6 @@ static int spectrum_server_cycle(struct spectrum *sp)
 {
     char buf[1024 * 4];
 
-    if (!sp->option_server_cycle)
-        return 0;
 
     sp->server_fd = sws_net_server(sp->option_server_host,
             sp->option_server_port, false, 5);
@@ -500,10 +498,11 @@ int spectrum_start_server(struct spectrum *sp)
 
 
     if (0 != spectrum_recod_reads(sp)) return -1;
+    if (sp->option_server_cycle)
+        return spectrum_server_cycle(sp);
+
     spectrum_recod_iter(sp);
     return 0;
-
-    return spectrum_server_cycle(sp);
 }
 
 
