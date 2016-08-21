@@ -2,7 +2,7 @@ PREFIX=$(shell pwd)/sp
 
 LDFLAGS= -lpcre -lpthread  -L $(PREFIX)/lib -ljansson -lluajit-5.1
 CFLAGS= -I sws -I $(PREFIX)/include -I $(PREFIX)/include/luajit-2.1
-LDFLAGS+= -g  -O0 -Wl,-rpath $(shell pwd)/sp/lib
+LDFLAGS+= -g  -O0 -Wl,-rpath $(PREFIX)/lib
 
 
 export PREFIX
@@ -21,7 +21,7 @@ sws=sws/libsws.a
 
 
 all:$(objects) $(lua) $(sws) $(jansson) $(lua_cjson) $(PREFIX)
-	gcc -o $(target) $(objects) $(sws)  $(LDFLAGS)
+	gcc  $(objects) -o $(target) $(sws)  $(LDFLAGS)
 
 $(sws):
 	make -C sws

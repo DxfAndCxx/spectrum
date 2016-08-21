@@ -630,6 +630,22 @@ static int splua_panic(lua_State *L)
     return 0;
 }
 
+int splua_set_path(struct spectrum *sp, lua_State *L)
+{
+    char path[1024];
+
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "path"); // get field "path" from table at top of stack (-1)
+
+    strcpy(path, lua_tostring(L, -1));
+    strcat(path, ";./?.lua;./modules/?.so;./modules/?.lua");
+
+    lua_pop(L, 1); // get rid of the string on the stack we just pushed on line 5
+    lua_pushstring(L, path); // push the new one
+    lua_setfield(L, -2, "path"); // set the field "path" in table at -2 with value at top of stack
+    lua_pop( L, 1 ); // get rid of package table from top of stack
+    return 0; // all done!
+}
 
 int splua_init(struct spectrum *sp, void *data, lua_env_t *env)
 {
@@ -649,6 +665,7 @@ int splua_init(struct spectrum *sp, void *data, lua_env_t *env)
     splua_init_set_pattern(L);
     splua_init_set_record(L);
 
+//    splua_set_path(sp, L);
 //    lua_atpanic(L, splua_panic);
 
     env->L = L;

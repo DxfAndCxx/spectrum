@@ -10,4 +10,5 @@ sp
 *.so
 deps/LuaJIT-2.0.4/
 deps/jansson-2.7/
+deps/LuaJIT-2.1.0-beta2/
 
