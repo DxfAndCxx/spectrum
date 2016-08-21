@@ -6,3 +6,8 @@ jansson/*
 luajit/*
 modules/lib/
 lua-cjson/*
+sp
+*.so
+deps/LuaJIT-2.0.4/
+deps/jansson-2.7/
+

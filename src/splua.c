@@ -395,7 +395,7 @@ static void splua_init_set_record(lua_State *L)
     lua_settop(L, 0);
 }
 
-static void splua_script(script_t ***pos, lua_State *L, const char *path, int *index)
+static int splua_script(script_t ***pos, lua_State *L, const char *path, int *index)
 {
     int level;
     int nresult;
@@ -407,7 +407,7 @@ static void splua_script(script_t ***pos, lua_State *L, const char *path, int *i
     {
         printf("luaL_loadfile `%s' err: %s\n", path, lua_tostring(L, -1));
         lua_pop(L, 1);
-        return ;
+        return -1;
     }
     nresult = lua_gettop(L) - level;
     debug("* Loadfile: %s nresult: %d\n", path, nresult);
@@ -442,6 +442,7 @@ static void splua_script(script_t ***pos, lua_State *L, const char *path, int *i
     }
 
     lua_pop(L, 1);
+    return 0;
 }
 
 
@@ -567,7 +568,8 @@ static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
         *(path + strlen(dirpath)) = '/';
         strcpy(path + strlen(dirpath) + 1, ptr->d_name);
 
-        splua_script(&pos, L, path, &i);
+        if (splua_script(&pos, L, path, &i))
+            return -1;
     }
     closedir(dir);
 
