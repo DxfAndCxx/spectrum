@@ -25,8 +25,6 @@ static struct spectrum *spectrum_init()
     sp->option_slice_size = 1024 * 1024 * 100;
     sp->option_log_level = LogLevelInfo;
 
-
-    sp->file_rc = "spectrum.lua";
     return sp;
 }
 
@@ -81,7 +79,7 @@ int main(int argc, const char **argv)
 
     set_loglevel(sp->option_log_level);
 
-//    if(splua_init(sp, sp, &sp->lua_env)) return -1;
+    if(splua_init(sp, sp, &sp->lua_env)) return -1;
 
     //sp_stage_lua_call(sp->L, "spectrum_config");
 

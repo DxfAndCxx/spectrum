@@ -99,6 +99,7 @@ static int spectrum_log_alloc(struct spectrum *sp, int64_t int64_total)
     return 0;
 }
 
+
 static int64_t spectrum_open_log(struct spectrum *sp)
 {
     iterm_t *iterm;
@@ -109,7 +110,6 @@ static int64_t spectrum_open_log(struct spectrum *sp)
     iterm = sp->file_logs;
     while(iterm)
     {
-        loginfo("* Open Log File: %s\n", iterm->name.s);
         fd = open(iterm->name.s, O_RDONLY);
         if (fd < 0)
         {
@@ -122,6 +122,7 @@ static int64_t spectrum_open_log(struct spectrum *sp)
             logerr("stat: %s", strerror(errno));
             return 0;
         }
+        loginfo("* Open log file: %s size: %d\n", iterm->name.s, st.st_size);
 
         total_size += st.st_size;
         iterm->v.s.s = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
@@ -137,7 +138,6 @@ static int64_t spectrum_open_log(struct spectrum *sp)
     }
 
     return total_size;
-
 }
 
 static int spectrum_log_split(struct spectrum *sp)
@@ -183,7 +183,6 @@ static int spectrum_pthread_create(struct spectrum *sp, void *handle)
 
         if (spt->lua_env.L)
             lua_close(spt->lua_env.L);
-        memset(spt, 0, sizeof(*spt));
 
         if (splua_init(sp, spt, &spt->lua_env))
             return -1;
@@ -296,7 +295,6 @@ static void spectrum_recod_iter(struct spectrum *sp)
         lua_getfield(env.L, -1, (*script)->name);
         lua_getfield(env.L, 2, "reduce");
 
-        printf("nargs: %d %d\n", nargs, lua_gettop(env.L));
         for (i=0; i < sp->thread_num; ++i)
         {
             int level;
@@ -304,7 +302,6 @@ static void spectrum_recod_iter(struct spectrum *sp)
             level = (*(spt->lua_env.scripts_reduce +
                     (script - env.scripts_reduce)))->level;
 
-            printf("level: %d\n", level);
             if (!splua_copy_table(env.L, spt->lua_env.L, level))
                 ++nargs;
         }
@@ -495,7 +492,6 @@ int spectrum_start_server(struct spectrum *sp)
         }
 
     }
-
 
     if (0 != spectrum_recod_reads(sp)) return -1;
     if (sp->option_server_cycle)

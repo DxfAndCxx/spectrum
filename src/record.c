@@ -54,23 +54,22 @@ static int record_append(struct sp_thread *spt, record_t *record)
 
     spt->current = record;
 
-    lua_getglobal(L, "scripts");
-
-    lua_getfield(L, -1, script->name);
-    lua_getfield(L, -1, "read");
-    lua_pcall(L, 0, 0, 0);
-    lua_pop(L, 1);
-
-    if (spt->flag_drop)
+    if (script)
     {
-        spt->flag_drop = 0;
-        ++spt->records_num_droped;
-        record_destory(record);
-        lua_pop(L, 1);
-        return 0;
-    }
-    lua_pop(L, 1);
+        lua_settop(L, 0);
+        lua_getglobal(L, "scripts");
+        lua_getfield(L, -1, script->name);
+        lua_getfield(L, -1, "read");
+        splua_pcall(L, 0, 0);
 
+        if (spt->flag_drop)
+        {
+            spt->flag_drop = 0;
+            ++spt->records_num_droped;
+            record_destory(record);
+            return 0;
+        }
+    }
 
     ++spt->records_num;
     if (spt->record)
@@ -302,6 +301,8 @@ void *record_iter(void *_)
     record = spt->record;
 
     L = spt->lua_env.L;
+
+    lua_settop(L, 0);
     lua_getglobal(L, "scripts");
 
     while (record)
@@ -349,35 +350,5 @@ void *record_iter(void *_)
 
         ++script;
     }
-
-
-
-    //if(sp_stage_lua_callx(spt->L, "spectrum_summary", 0, 1)) return NULL;
-
-    //if (!lua_istable(spt->L, -1)) return NULL;//ignore
-
-
-    //iterm_t *iterm;
-    //lua_pushnil(spt->L);
-    //while (lua_next(spt->L, -2))
-    //{
-    //    if (lua_isnumber(spt->L, -1))
-    //    {
-    //        iterm = Malloc(sizeof(*iterm));
-    //        sp_lua_tolstring(spt->L, -2, &iterm->name);
-    //        iterm->v.n.n = lua_tonumber(spt->L, -1);
-    //        iterm->next = NULL;
-    //        if (spt->summary_tail)
-    //        {
-    //            spt->summary_tail->next = iterm;
-    //            spt->summary_tail = iterm;
-    //        }
-    //        else{
-    //            spt->summary_head = spt->summary_tail = iterm;
-    //        }
-    //    }
-    //    lua_pop(spt->L, 1);
-    //}
-
     return 0;
 }

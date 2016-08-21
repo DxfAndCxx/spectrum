@@ -14,16 +14,18 @@ end
 
 function _M.map()
    local t = {}
-   return {t = 2,  s = 'string', table = {t = 2, s = 'value'}}
-     --scatter_request_time:print()
+   --return {t = 2,  s = 'string', table = {t = 2, s = 'value'}}
+   return scatter_request_time:map()
 end
 
 function _M.reduce(...)
-   print("## Go To reduce")
-    local args = {...}
-    for k, v in pairs(args) do
-        print(k, v)
-    end
+
+    scatter.print(nil, ...)
+   --print("## Go To reduce")
+   -- local args = {...}
+   -- for k, v in pairs(args) do
+   --     print(k, v)
+   -- end
 end
 
 

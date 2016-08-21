@@ -9,21 +9,22 @@ local mt = { __index = _M }
 
 function _M.new(self, iter, min, max)
     min = min or 0
-    return setmetatable({iter = iter, min = min, max=max, scatter = {}, _max = 0, _total = 0, _remain = 0}, mt)
+    return setmetatable({iter = iter, min = min, max=max,
+                  scatter = {}, _max = 0, _total = 0, _remain = 0}, mt)
 end
 
 
 function _M.update(self, v)
       if self.min and v < self.min then
               self._remain = self._remain + 1
-              return 
+              return
       end
-      if self.max and v > self.max then 
+      if self.max and v > self.max then
               self._remain = self._remain + 1
-              return 
+              return
       end
 
-      local i = math_ceil(v / self.iter) 
+      local i = math_ceil(v / self.iter)
       if i > self._max then
           self._max = i
       end
@@ -38,22 +39,59 @@ function _M.update(self, v)
       return i
 end
 
-function _M.print(self, handle)
+function _M.map(self)
+    return {scatter = self.scatter, iter = self.iter, total = self._total,
+          remain = self._remain, max = self._max}
+end
+
+function _M.print(handle, scatter, ...)
+    local scatters = {...}
+
+    local total = scatter.total
+    local remain = scatter.remain
+    local iter = scatter.iter
+    local max = scatter.max
+
+    for _, s in ipairs(scatters) do
+        for k, v in pairs(s.scatter) do
+            if nil == scatter.scatter[k] then
+                scatter.scatter[k] = v
+            else
+                scatter.scatter[k] = v + scatter.scatter[k]
+            end
+            if max > s.max then
+                max = s.max
+            end
+        end
+        total = s.total + total
+        remain = s.remain + remain
+    end
+
+    scatter = scatter.scatter
+
+
+
+
+
+
      local s, e
-     for i=1,self._max do
-         if nil ~= self.scatter[i] then
-            s = self.iter * (i - 1)
-            e = self.iter * i
+     for i=1, max do
+         if nil ~= scatter[i] then
+            s = iter * (i - 1)
+            e = iter * i
             if handle then
                  s = handle(s)
                  e = handle(e)
             end
-            
-	    print(s, '-', e, ':', string.format("%7.2f%%", self.scatter[i] * 100 / self._total))
+
+	    print(s, '-', e, ':',
+              string.format("%7.2f%%", scatter[i] * 100 / total),
+              scatter[i]
+              )
          end
      end
-     print("Total: ", self._total, "Remain: ", self._remain)
-         
+     print("Total: ", total, "Remain: ", remain)
+
 end
 
 

@@ -539,12 +539,20 @@ static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
     script_t **ppos;
     script_t *t;
 
+    if (!dirpath) return 0;
+
     pos = &head;
 
     lua_newtable(L);    /* sp.vars */
     lua_setglobal(L, "scripts");
 
     dir = opendir(dirpath);
+    if (dir <= 0)
+    {
+        logerr("opendir fail: %s\n", dirpath);
+        return -1;
+    }
+
     while((ptr = readdir(dir)) != NULL)
     {
         if (DT_REG != ptr->d_type) continue;
