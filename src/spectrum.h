@@ -92,6 +92,7 @@ typedef struct script{
     int  stages;
     double  order;
     struct script *next;
+    int level;
 }script_t;
 
 typedef struct lua_env{
@@ -102,9 +103,9 @@ typedef struct lua_env{
     script_t *scripts_read;
     script_t *scripts_filter;
 
-    script_t *scripts_iter;
-    script_t *scripts_map;
-    script_t *scripts_reduce;
+    script_t **scripts_iter;
+    script_t **scripts_map;
+    script_t **scripts_reduce;
 }lua_env_t;
 
 
@@ -193,6 +194,11 @@ int sp_stage_lua_call(lua_State *L, const char *name);
 int sp_stage_lua_callx(lua_State *L, const char *name, int nargs, int nresults);
 
 int splua_init(struct spectrum *sp, void *data, lua_env_t* env);
+int splua_copy_table(lua_State *d, lua_State *s, int index);
+
+
+int _splua_pcall(const char * stack, lua_State *L, int nargs, int nresult);
+#define splua_pcall(L, n1, n2) _splua_pcall(__func__, L, n1, n2)
 
 #endif
 

@@ -53,12 +53,13 @@ static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
     sws_ap_bool("-s",           &sp->option_server_cycle,  "work as server.");
     sws_ap_int("--server-port", &sp->option_server_port,    "set the server listen port.");
     sws_ap_str("--server-host", &sp->option_server_host,    "set the server listen host.");
-    sws_ap_func("-l",            &sp->file_logs,           spectrum_args_append, "set log file, can set multi times.");
+    sws_ap_func("-l",           &sp->file_logs,   spectrum_args_append, "set log file, can set multi times.");
     sws_ap_str("-p",            &sp->file_pattern,        "set pattern file.");
     sws_ap_str("-r",            &sp->file_rc,             "set rc.lua file. default is ./spectrum.lua.");
     sws_ap_str("-c",            &sp->option_client_cmd,   "set the client cmd and work as client.");
-    sws_ap_int("--log",            &sp->option_log_level,   "set log level: 0-5 err, info, debug");
-    sws_ap_bool("--json",            &sp->option_src_type,   "set src type for json");
+    sws_ap_int("--log",         &sp->option_log_level,   "set log level: 0-5 err, info, debug");
+    sws_ap_bool("--json",       &sp->option_src_type,   "set src type for json");
+    sws_ap_int("--slice",       &sp->option_slice_size,   "set slice size");
 
     return sws_ap(argc, argv);
 }
@@ -80,7 +81,7 @@ int main(int argc, const char **argv)
 
     set_loglevel(sp->option_log_level);
 
-    if(splua_init(sp, sp, &sp->lua_env)) return -1;
+//    if(splua_init(sp, sp, &sp->lua_env)) return -1;
 
     //sp_stage_lua_call(sp->L, "spectrum_config");
 

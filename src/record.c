@@ -296,7 +296,7 @@ void *record_iter(void *_)
     struct sp_thread *spt;
     record_t *record;
     lua_State *L;
-    script_t *script;
+    script_t **script;
 
     spt = _;
     record = spt->record;
@@ -307,11 +307,23 @@ void *record_iter(void *_)
     while (record)
     {
         spt->current = record;
+        if (spt->lua_env.scripts_filter)
+        {
+            lua_getfield(L, -1, spt->lua_env.scripts_filter->name);
+            lua_getfield(L, -1, "filter");
+            lua_pcall(L, 0, 0, 0);
+            lua_pop(L, 1);
+            if (spt->flag_drop)
+            {
+                spt->flag_drop = 0;
+                continue;
+            }
+        }
 
         script = spt->lua_env.scripts_map;
-        while (script)
+        while (*script)
         {
-            lua_getfield(L, -1, script->name);
+            lua_getfield(L, -1, (*script)->name);
             lua_getfield(L, -1, "iter");
             lua_pcall(L, 0, 0, 0);
             lua_pop(L, 1);
@@ -321,17 +333,23 @@ void *record_iter(void *_)
         record = record->next;
     }
 
-    script = spt->lua_env.scripts_reduce;
-    while (script)
+    lua_settop(L, 0);
+    lua_getglobal(L, "scripts");
+
+    script = spt->lua_env.scripts_map;
+    while (*script)
     {
-        lua_getfield(L, -1, script->name);
+        lua_getfield(L, 1, (*script)->name);
         lua_getfield(L, -1, "map");
-        lua_pcall(L, 0, 0, 0);
-        lua_pop(L, 1);
+        if (0 == splua_pcall(L, 0, 1))
+        {
+            lua_remove(L, -2);
+            (*script)->level = lua_gettop(L);
+        }
+
         ++script;
     }
 
-    lua_pop(L, 1);
 
 
     //if(sp_stage_lua_callx(spt->L, "spectrum_summary", 0, 1)) return NULL;

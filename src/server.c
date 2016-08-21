@@ -176,16 +176,17 @@ static int spectrum_pthread_create(struct spectrum *sp, void *handle)
     int i;
     struct sp_thread *spt;
 
-    debug("* create %d threads\n", sp->thread_num);
+    loginfo("* Create %d threads\n", sp->thread_num);
     for (i=0; i < sp->thread_num; ++i)
     {
         spt = sp->threads + i;
 
         if (spt->lua_env.L)
             lua_close(spt->lua_env.L);
+        memset(spt, 0, sizeof(*spt));
 
-         if (splua_init(sp, spt, &spt->lua_env))
-             return -1;
+        if (splua_init(sp, spt, &spt->lua_env))
+            return -1;
 
         if (!spt->lua_env.L) return -1;
 
@@ -274,42 +275,70 @@ static int spectrum_recod_reads(struct spectrum *sp)
 
 static void spectrum_recod_iter(struct spectrum *sp)
 {
-    int i;
-    iterm_t *iterm1;
-    iterm_t *iterm2;
+    int i, nargs;
+    struct sp_thread *spt;
+    lua_env_t env;
+    script_t **script;
 
     spectrum_pthread_create(sp, record_iter);
 
     spectrum_join(sp);
 
+    splua_init(sp, NULL, &env);
 
-    if (sp->thread_num > 1)
+    script = env.scripts_reduce;
+
+    while(*script)
     {
-        for (i=1; i < sp->thread_num; ++i)
+        nargs = 0;
+        lua_settop(env.L, 0);
+        lua_getglobal(env.L, "scripts");
+        lua_getfield(env.L, -1, (*script)->name);
+        lua_getfield(env.L, 2, "reduce");
+
+        printf("nargs: %d %d\n", nargs, lua_gettop(env.L));
+        for (i=0; i < sp->thread_num; ++i)
         {
-            iterm1 = sp->threads[i].summary_head;
-            while (iterm1)
-            {
-                iterm2 = spectrum_iterm_get(sp->threads, &iterm1->name);
-                if (iterm2)
-                    iterm2->v.n.n += iterm1->v.n.n;
-                else{
-                    sp->threads[0].summary_tail->next = iterm1;
-                    sp->threads[0].summary_tail = iterm1;
-                }
+            int level;
+            spt = sp->threads + i;
+            level = (*(spt->lua_env.scripts_reduce +
+                    (script - env.scripts_reduce)))->level;
 
-                iterm1 = iterm1->next;
-            }
+            printf("level: %d\n", level);
+            if (!splua_copy_table(env.L, spt->lua_env.L, level))
+                ++nargs;
         }
-    }
-    iterm1 = sp->threads[0].summary_head;
-    while(iterm1)
-    {
-        printf("%.*s = %f\n", (int)iterm1->name.l,
-                iterm1->name.s, iterm1->v.n.n);
-        iterm1 = iterm1->next;
 
+        splua_pcall(env.L, nargs, 0);
+
+        ++script;
     }
+
+
+    //    for (i=1; i < sp->thread_num; ++i)
+    //    {
+    //        iterm1 = sp->threads[i].summary_head;
+    //        while (iterm1)
+    //        {
+    //            iterm2 = spectrum_iterm_get(sp->threads, &iterm1->name);
+    //            if (iterm2)
+    //                iterm2->v.n.n += iterm1->v.n.n;
+    //            else{
+    //                sp->threads[0].summary_tail->next = iterm1;
+    //                sp->threads[0].summary_tail = iterm1;
+    //            }
+
+    //            iterm1 = iterm1->next;
+    //        }
+    //    }
+    //iterm1 = sp->threads[0].summary_head;
+    //while(iterm1)
+    //{
+    //    printf("%.*s = %f\n", (int)iterm1->name.l,
+    //            iterm1->name.s, iterm1->v.n.n);
+    //    iterm1 = iterm1->next;
+
+    //}
 }
 
 typedef void (*spectrum_cmd_handle)(struct spectrum *sp);
@@ -324,16 +353,16 @@ static void spectrum_fork(struct spectrum *sp, spectrum_cmd_handle handle)
         sp->option_server_cycle = 0;
 
         // dup2 fd
-        if (!dup2(sp->confd, 1))
-        {
-            logerr("dup2 confd[%d] to 1 fail\n", sp->confd);
-            return;
-        }
-        if (!dup2(sp->confd, 2))
-        {
-            logerr("dup2 confd[%d] to 2 fail\n", sp->confd);
-            return;
-        }
+        //if (!dup2(sp->confd, 1))
+        //{
+        //    logerr("dup2 confd[%d] to 1 fail\n", sp->confd);
+        //    return;
+        //}
+        //if (!dup2(sp->confd, 2))
+        //{
+        //    logerr("dup2 confd[%d] to 2 fail\n", sp->confd);
+        //    return;
+        //}
 
         handle(sp);
 
@@ -348,26 +377,62 @@ static void spectrum_fork(struct spectrum *sp, spectrum_cmd_handle handle)
 
 static void spectrum_handle_cmd(struct spectrum *sp, const char *cmd)
 {
+    const char *C;
+    time_t now ;
+    struct tm *tm_now ;
+    const char *response = "HTTP/1.0 200 OK\r\n"
+        "Content-Type: text/plain charset=utf-8\r\n"
+        "\r\n";
 
-    if (!strncmp("GET /iter HTTP/1.1", cmd, 18))
+    time(&now) ;
+    tm_now = localtime(&now) ;
+
+
+    C = "GET /iter HTTP/1.1\r\n";
+    if (!strncmp(C, cmd, strlen(C)))
     {
-        const char *response = "HTTP/1.0 200 OK\r\n"
-            "Content-Type: text/plain charset=utf-8\r\n"
-            "\r\n";
         write(sp->confd, response, strlen(response));
+        loginfo("* [%d-%d-%d %d:%d:%d] recv request: %.*s\n",
+                tm_now->tm_year+1900,
+                tm_now->tm_mon+1,
+                tm_now->tm_mday,
+                tm_now->tm_hour,
+                tm_now->tm_min,
+                tm_now->tm_sec,
+                strlen(C) -2 , C);
+
         spectrum_fork(sp, spectrum_recod_iter);
         return;
     }
 
 
-    if (!strncmp("iter\r\n", cmd, 6))
+    C = "iter\r\n";
+    if (!strncmp(C, cmd, strlen(C)))
     {
+        loginfo("* [%d-%d-%d %d:%d:%d] recv request: %.*s\n",
+                tm_now->tm_year+1900,
+                tm_now->tm_mon+1,
+                tm_now->tm_mday,
+                tm_now->tm_hour,
+                tm_now->tm_min,
+                tm_now->tm_sec,
+                strlen(C) -2 , C);
         spectrum_fork(sp, spectrum_recod_iter);
         return;
     }
 
-    if (!strncmp("stop\r\n", cmd, 6))
+    C = "stop\r\n";
+    if (!strncmp(C, cmd, strlen(C)))
     {
+        loginfo("* [%d-%d-%d %d:%d:%d] recv request: %.*s\n",
+                tm_now->tm_year+1900,
+                tm_now->tm_mon+1,
+                tm_now->tm_mday,
+                tm_now->tm_hour,
+                tm_now->tm_min,
+                tm_now->tm_sec,
+                strlen(C) -2 , C);
+
         sp->option_server_cycle = 0;
         return;
     }
@@ -395,7 +460,7 @@ static int spectrum_server_cycle(struct spectrum *sp)
         return -1;
     }
 
-    loginfo("Start server at %s:%d\n", sp->option_server_host,
+    loginfo("* Start server at %s:%d\n", sp->option_server_host,
             sp->option_server_port);
 
     while (sp->option_server_cycle)
@@ -435,6 +500,8 @@ int spectrum_start_server(struct spectrum *sp)
 
 
     if (0 != spectrum_recod_reads(sp)) return -1;
+    spectrum_recod_iter(sp);
+    return 0;
 
     return spectrum_server_cycle(sp);
 }

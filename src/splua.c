@@ -446,11 +446,13 @@ static void splua_script(script_t ***pos, lua_State *L, const char *path, int *i
 
 
 
+
+
 static int splua_scripts_stage(lua_env_t *env)
 {
     lua_State *L;
     script_t *s;
-    void *m;
+    script_t  **m;
 
     L = env->L;
     m = malloc(sizeof(void *) * 3 * env->scripts_n);
@@ -472,7 +474,7 @@ static int splua_scripts_stage(lua_env_t *env)
         {
             if (env->scripts_read)
             {
-                logerr("`read' function should just one!.");
+                logerr("`read' function should just one!\n");
                 return -1;
             }
             env->scripts_read = s;
@@ -494,7 +496,7 @@ static int splua_scripts_stage(lua_env_t *env)
         lua_getfield(L, -1, "iter");
         if (lua_isfunction(L, -1))
         {
-            env->scripts_iter = s;
+            *env->scripts_iter = s;
             ++env->scripts_iter;
         }
         lua_pop(L, 1);
@@ -502,7 +504,7 @@ static int splua_scripts_stage(lua_env_t *env)
         lua_getfield(L, -1, "map");
         if (lua_isfunction(L, -1))
         {
-            env->scripts_map = s;
+            *env->scripts_map = s;
             ++env->scripts_map;
         }
         lua_pop(L, 1);
@@ -510,7 +512,7 @@ static int splua_scripts_stage(lua_env_t *env)
         lua_getfield(L, -1, "reduce");
         if (lua_isfunction(L, -1))
         {
-            env->scripts_reduce = s;
+            *env->scripts_reduce = s;
             ++env->scripts_reduce;
         }
         lua_pop(L, 1);
@@ -590,13 +592,41 @@ static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
 }
 
 
+#include <execinfo.h>
 
+static int splua_panic(lua_State *L)
+{
+    logerr("panic\n");
+    int j, nptrs;
+    void *buffer[100];
+    char **strings;
+
+    nptrs = backtrace(buffer, 100);
+    printf("backtrace() returned %d addresses\n", nptrs);
+
+    /* The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
+       would produce similar output to the following: */
+
+    strings = backtrace_symbols(buffer, nptrs);
+    if (strings == NULL) {
+        perror("backtrace_symbols");
+        exit(EXIT_FAILURE);
+    }
+
+    for (j = 0; j < nptrs; j++)
+        printf("%s\n", strings[j]);
+
+    free(strings);
+    return 0;
+}
 
 
 int splua_init(struct spectrum *sp, void *data, lua_env_t *env)
 {
     lua_State *L;
     int res;
+
+    memset(env, 0, sizeof(*env));
 
     L = luaL_newstate();
     luaL_openlibs(L);
@@ -609,6 +639,8 @@ int splua_init(struct spectrum *sp, void *data, lua_env_t *env)
     splua_init_set_pattern(L);
     splua_init_set_record(L);
 
+//    lua_atpanic(L, splua_panic);
+
     env->L = L;
     res = splua_scripts(env, sp->file_rc, L);
     lua_settop(L, 0);
@@ -616,4 +648,77 @@ int splua_init(struct spectrum *sp, void *data, lua_env_t *env)
     return res;
 }
 
+
+int splua_copy_table(lua_State *d, lua_State *s, int index)
+{
+    if (!lua_istable(s, index)){
+        logerr("splua_copy_table: index(%d) in stack(%x) is not table.\n",
+                index, s);
+        return -1;
+    }
+
+    if (index < 0)
+        index = lua_gettop(s) + 1 + index;
+
+    lua_newtable(d);
+    lua_pushnil(s);
+    while(lua_next(s, index))
+    {
+        switch(lua_type(s, -1))
+        {
+            case LUA_TTABLE:
+                splua_copy_table(d, s, -1);
+                break;
+
+            case LUA_TSTRING:
+                lua_pushstring(d, lua_tostring(s, -1));
+                break;
+
+            case LUA_TNUMBER:
+                lua_pushnumber(d, lua_tonumber(s, -1));
+                break;
+
+            case LUA_TNIL:
+                lua_pushnil(d);
+                break;
+
+            case LUA_TBOOLEAN:
+                lua_pushboolean(d, lua_toboolean(s, -1));
+                break;
+
+            default:
+                if (lua_isnumber(s, -2))
+                    logerr("The type of key: %d "
+                            "not support in splua_copy_table.\n",
+                            lua_tonumber(s, -2));
+                else
+                    logerr("The type of key: %s "
+                            "not support in splua_copy_table.\n",
+                            lua_tostring(s, -2));
+                goto fail;
+
+
+        }
+
+        if (lua_isnumber(s, -2))
+            lua_rawseti(d, -2, lua_tonumber(s, -2));
+        else
+            lua_setfield(d, -2, lua_tostring(s, -2));
+
+fail:
+        lua_pop(s, 1); // pop value
+    }
+    return 0;
+}
+
+int _splua_pcall(const char * stack, lua_State *L, int nargs, int nresult)
+{
+    if(lua_pcall(L, nargs, nresult, 0))
+    {
+        logerr("Lua Err in `%s': %s\n", stack, lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return -1;
+    }
+    return 0;
+}
 
