@@ -608,7 +608,6 @@ static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
 
 static int splua_panic(lua_State *L)
 {
-    logerr("panic\n");
     int j, nptrs;
     void *buffer[100];
     char **strings;
@@ -625,8 +624,9 @@ static int splua_panic(lua_State *L)
         exit(EXIT_FAILURE);
     }
 
+    logerr("LUA PANIC:");
     for (j = 0; j < nptrs; j++)
-        printf("%s\n", strings[j]);
+        logerr("%s\n", strings[j]);
 
     free(strings);
     return 0;
@@ -668,7 +668,7 @@ int splua_init(struct spectrum *sp, void *data, lua_env_t *env)
     splua_init_set_record(L);
 
 //    splua_set_path(sp, L);
-//    lua_atpanic(L, splua_panic);
+    lua_atpanic(L, splua_panic);
 
     env->L = L;
     res = splua_scripts(env, sp->file_rc, L);
