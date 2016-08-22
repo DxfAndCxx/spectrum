@@ -312,7 +312,7 @@ void *record_iter(void *_)
         {
             lua_getfield(L, -1, spt->lua_env.scripts_filter->name);
             lua_getfield(L, -1, "filter");
-            lua_pcall(L, 0, 0, 0);
+            splua_pcall(L, 0, 0);
             lua_pop(L, 1);
             if (spt->flag_drop)
             {
@@ -326,7 +326,7 @@ void *record_iter(void *_)
         {
             lua_getfield(L, -1, (*script)->name);
             lua_getfield(L, -1, "iter");
-            lua_pcall(L, 0, 0, 0);
+            splua_pcall(L, 0, 0);
             lua_pop(L, 1);
             ++script;
         }
