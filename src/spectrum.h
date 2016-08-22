@@ -173,6 +173,7 @@ struct spectrum{
     int option_slice_size;
     int option_log_level;
     int option_src_type;
+    int option_redirt_out;
     const char *option_server_host;
     const char *option_client_cmd;
 

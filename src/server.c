@@ -348,18 +348,20 @@ static void spectrum_fork(struct spectrum *sp, spectrum_cmd_handle handle)
     {
         // close cycle
         sp->option_server_cycle = 0;
+        if (sp->option_redirt_out)
+        {
+            if (!dup2(sp->confd, 1))
+            {
+                logerr("dup2 confd[%d] to 1 fail\n", sp->confd);
+                return;
+            }
+            if (!dup2(sp->confd, 2))
+            {
+                logerr("dup2 confd[%d] to 2 fail\n", sp->confd);
+                return;
+            }
+        }
 
-        // dup2 fd
-        //if (!dup2(sp->confd, 1))
-        //{
-        //    logerr("dup2 confd[%d] to 1 fail\n", sp->confd);
-        //    return;
-        //}
-        //if (!dup2(sp->confd, 2))
-        //{
-        //    logerr("dup2 confd[%d] to 2 fail\n", sp->confd);
-        //    return;
-        //}
 
         handle(sp);
 
@@ -378,7 +380,7 @@ static void spectrum_handle_cmd(struct spectrum *sp, const char *cmd)
     time_t now ;
     struct tm *tm_now ;
     const char *response = "HTTP/1.0 200 OK\r\n"
-        "Content-Type: text/plain charset=utf-8\r\n"
+        "Content-Type: text/plain; charset=utf-8\r\n"
         "\r\n";
 
     time(&now) ;

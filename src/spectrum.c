@@ -24,6 +24,7 @@ static struct spectrum *spectrum_init()
     sp->option_server_host = "127.0.0.1";
     sp->option_slice_size = 1024 * 1024 * 100;
     sp->option_log_level = LogLevelInfo;
+    sp->option_redirt_out = 1;
 
     return sp;
 }
@@ -58,6 +59,7 @@ static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
     sws_ap_int("--log",         &sp->option_log_level,   "set log level: 0-5 err, info, debug");
     sws_ap_bool("--json",       &sp->option_src_type,   "set src type for json");
     sws_ap_int("--slice",       &sp->option_slice_size,   "set slice size");
+    sws_ap_int("--no-rediret",       &sp->option_redirt_out,   "set slice size");
 
     return sws_ap(argc, argv);
 }
