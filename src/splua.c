@@ -557,6 +557,8 @@ static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
     while((ptr = readdir(dir)) != NULL)
     {
         if (DT_REG != ptr->d_type) continue;
+        if (strlen(ptr->d_name) < 5) continue;
+        if (strcmp(ptr->d_name[strlen(ptr->d_name) - 4], ".lua")) continue;
         if (ptr->d_name[0] == '.') continue;
 
         if (strlen(dirpath) + strlen(ptr->d_name) + 10 > sizeof(path))
