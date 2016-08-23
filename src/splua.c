@@ -529,7 +529,7 @@ static int splua_scripts_stage(lua_env_t *env)
 
     {
         int t;
-        loginfo(" * Stage: ");
+        loginfo("* Stage: ");
         if (env->scripts_read) loginfo("read -> ");
         if (env->scripts_filter) loginfo("filter -> ");
 
@@ -540,7 +540,7 @@ static int splua_scripts_stage(lua_env_t *env)
         if (t) loginfo("map(%d) -> ", t);
 
         t = env->scripts_reduce - m - env->scripts_n * 2;
-        if (t) loginfo("reduce(%d) -> ", t);
+        if (t) loginfo("reduce(%d)", t);
 
         loginfo("\n");
     }

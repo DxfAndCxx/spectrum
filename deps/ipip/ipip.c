@@ -114,8 +114,6 @@ static int find(lua_State *L) {
     memcpy(result, ipip.data + ipip.offset + index_offset - 1024, index_length);
     result[index_length] = '\0';
 
-    printf("%s\n", result);
-
     lua_newtable(L);
 
     char *s; char *pos;
