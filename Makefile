@@ -1,8 +1,8 @@
 PREFIX=$(shell pwd)/sp
 
-LDFLAGS= -lpcre -lpthread  -L $(PREFIX)/lib -ljansson -lluajit-5.1
-CFLAGS= -I sws -I $(PREFIX)/include -I $(PREFIX)/include/luajit-2.1
-LDFLAGS+= -g  -O0 -Wl,-rpath $(PREFIX)/lib
+LDFLAGS += -lpcre -lpthread  -L $(PREFIX)/lib -ljansson -lluajit-5.1
+CFLAGS  += -I sws -I $(PREFIX)/include -I $(PREFIX)/include/luajit-2.1
+LDFLAGS += -g  -O0 -Wl,-rpath $(PREFIX)/lib
 
 
 export PREFIX

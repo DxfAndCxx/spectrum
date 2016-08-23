@@ -412,6 +412,10 @@ static int splua_script(script_t ***pos, lua_State *L, const char *path, int *in
     nresult = lua_gettop(L) - level;
     debug("* Loadfile: %s nresult: %d\n", path, nresult);
 
+    if (nresult < 1) {
+        logwrn("* %s no return table.\n");
+    }
+
     while (nresult)
     {
         --nresult;
@@ -521,6 +525,25 @@ static int splua_scripts_stage(lua_env_t *env)
         s = s->next;
     }
     lua_settop(L, 0);
+
+
+    {
+        int t;
+        loginfo(" * Stage: ");
+        if (env->scripts_read) loginfo("read -> ");
+        if (env->scripts_filter) loginfo("filter -> ");
+
+        t = env->scripts_iter - m;
+        if (t) loginfo("iter(%d) -> ", t);
+
+        t = env->scripts_map - m - env->scripts_n;
+        if (t) loginfo("map(%d) -> ", t);
+
+        t = env->scripts_reduce - m - env->scripts_n * 2;
+        if (t) loginfo("reduce(%d) -> ", t);
+
+        loginfo("\n");
+    }
 
     env->scripts_iter = m;
     env->scripts_map = m + env->scripts_n;

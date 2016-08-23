@@ -22,6 +22,7 @@
 
 
 #define LogLevelErr 0
+#define LogLevelWrn 3
 #define LogLevelInfo 4
 #define LogLevelDebug 5
 
@@ -37,6 +38,7 @@ void set_loglevel(int level);
 
 #define debug(...)  __log(LogLevelDebug, __VA_ARGS__)
 #define loginfo(...) __log(LogLevelInfo, __VA_ARGS__)
+#define logwrn(...) __log(LogLevelWrn, __VA_ARGS__)
 #define logerr(...) __log(LogLevelErr, __VA_ARGS__)
 
 
