@@ -310,32 +310,6 @@ static void spectrum_recod_iter(struct spectrum *sp)
 
         ++script;
     }
-
-
-    //    for (i=1; i < sp->thread_num; ++i)
-    //    {
-    //        iterm1 = sp->threads[i].summary_head;
-    //        while (iterm1)
-    //        {
-    //            iterm2 = spectrum_iterm_get(sp->threads, &iterm1->name);
-    //            if (iterm2)
-    //                iterm2->v.n.n += iterm1->v.n.n;
-    //            else{
-    //                sp->threads[0].summary_tail->next = iterm1;
-    //                sp->threads[0].summary_tail = iterm1;
-    //            }
-
-    //            iterm1 = iterm1->next;
-    //        }
-    //    }
-    //iterm1 = sp->threads[0].summary_head;
-    //while(iterm1)
-    //{
-    //    printf("%.*s = %f\n", (int)iterm1->name.l,
-    //            iterm1->name.s, iterm1->v.n.n);
-    //    iterm1 = iterm1->next;
-
-    //}
 }
 
 typedef void (*spectrum_cmd_handle)(struct spectrum *sp);
@@ -478,7 +452,7 @@ int spectrum_start_server(struct spectrum *sp)
 {
     if (!sp->file_pattern && !sp->option_src_type)
     {
-        printf("should set file_log and file_pattern in spectrum_config "
+        logerr("should set file_log and file_pattern in spectrum_config "
                 "of spectrum.lua\n");
         return -1;
     }
@@ -489,7 +463,7 @@ int spectrum_start_server(struct spectrum *sp)
 
         if (pattern_compile(sp, sp->file_pattern))
         {
-            printf("pattern_compile fail\n");
+            logerr("pattern_compile fail\n");
             return -1;
         }
 

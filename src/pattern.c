@@ -161,7 +161,7 @@ int pattern_compile(struct spectrum *sp, const char *path)
 
     // 返回值：被编译好的正则表达式的pcre内部表示结构
     if (error) {                 //如果编译失败，返回错误信息
-        printf("PCRE compilation failed at offset %d: %s\n", erroffset, error);
+        logerr("PCRE compilation failed at offset %d: %s\n", erroffset, error);
         return -1;
     }
     return 0;

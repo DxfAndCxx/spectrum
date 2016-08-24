@@ -35,7 +35,7 @@ int sp_stage_lua_callx(lua_State *L, const char *name, int nargs, int nresults)
     {
         if (0 != lua_pcall(L, nargs, nresults, 0))
         {
-            printf("error running function `%s': %s\n", name,
+            logerr("error running function `%s': %s\n", name,
                     lua_tostring(L, -1));
             lua_pop(L, 1);
             return -1;

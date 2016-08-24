@@ -405,7 +405,7 @@ static int splua_script(script_t ***pos, lua_State *L, const char *path, int *in
     level = lua_gettop(L);
     if (luaL_dofile(L, path))
     {
-        printf("luaL_loadfile `%s' err: %s\n", path, lua_tostring(L, -1));
+        logerr("luaL_loadfile `%s' err: %s\n", path, lua_tostring(L, -1));
         lua_pop(L, 1);
         return -1;
     }
@@ -636,7 +636,7 @@ static int splua_panic(lua_State *L)
     char **strings;
 
     nptrs = backtrace(buffer, 100);
-    printf("backtrace() returned %d addresses\n", nptrs);
+    logerr("backtrace() returned %d addresses\n", nptrs);
 
     /* The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
        would produce similar output to the following: */

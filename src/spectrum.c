@@ -59,7 +59,7 @@ static int spectrum_options(struct spectrum *sp, int argc, const char **argv)
     sws_ap_int("--log",         &sp->option_log_level,   "set log level: 0-5 err, info, debug");
     sws_ap_bool("--json",       &sp->option_src_type,   "set src type for json");
     sws_ap_int("--slice",       &sp->option_slice_size,   "set slice size");
-    sws_ap_bool("--no-redirect",       &sp->option_redirt_out,   "set slice size");
+    sws_ap_bool("--no-redirect",       &sp->option_redirt_out,   "off stdout and stderr redirect");
 
     return sws_ap(argc, argv);
 }
@@ -73,7 +73,7 @@ int main(int argc, const char **argv)
     sp = spectrum_init();
     if (!sp)
     {
-        printf("print sp init fail\n");
+        logerr("print sp init fail\n");
         return -1;
     }
 
