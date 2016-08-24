@@ -78,6 +78,13 @@ static int find(lua_State *L) {
     const char *ip;
     char result[1024];
 
+    if (!ipip.offset)
+    {
+        lua_pushnil(L);
+        lua_pushstring(L, "need to be inited.");
+        return 2;
+    }
+
     if (!lua_isstring(L, -1))
     {
         lua_pushnil(L);

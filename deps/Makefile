@@ -6,6 +6,6 @@ all:
 	cd jansson-2.7; ./configure --prefix=$(PREFIX)
 	make -C jansson-2.7
 	make -C jansson-2.7 install
-	make -C monip
-	make -C monip install
+	make -C ipip
+	make -C ipip install
 
