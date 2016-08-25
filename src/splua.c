@@ -12,17 +12,265 @@
 
 #include "spectrum.h"
 
+
+#define SP_DATA "__sp_data"
+#define SP_ENV  "__sp_env"
+
 static inline void *splua_get_data(lua_State *L)
 {
     void *data;
 
-    lua_getglobal(L, "__sp_data");
+    lua_getglobal(L, SP_DATA);
     data = lua_touserdata(L, -1);
     lua_pop(L, 1);
 
     return data;
 }
 
+static int splua_script_append(lua_State *L)
+{
+    script_t *script;
+    if (!lua_istable(L, -1))
+    {
+        lua_pop(L, 1);
+        logerr("splua_script_append: got value is not table.\n");
+        return 0;
+    }
+
+    script = malloc(sizeof(*script));
+    memset(script, 0, sizeof(*script));
+
+    lua_getfield(L, -1, "_order");
+    if (lua_isnumber(L, -1))
+        script->order = lua_tonumber(L, -1);
+    lua_pop(L, 1);
+
+
+    sprintf(script->name, "%p", (void *)script);
+
+    lua_getglobal(L, "scripts");
+    lua_pushvalue(L, -2);
+    lua_setfield(L, -2, script->name);
+    lua_pop(L, 2);
+
+    { // Add To Scripts
+        lua_env_t *env;
+        script_t **t;
+
+        lua_getglobal(L, SP_ENV);
+        env = lua_touserdata(L, -1);
+        lua_pop(L, 1);
+
+        t = &env->scripts;
+        while(*t) t = &(*t)->next;
+        *t = script;
+        script->next = NULL;
+        ++env->scripts_n;
+    }
+
+
+    debug("* Append Mod: %s\n", script->name);
+    return 0;
+}
+
+
+static int splua_script(script_t ***pos, lua_State *L, const char *path, int *index)
+{
+    int level, nresult;
+
+    level = lua_gettop(L);
+    if (luaL_dofile(L, path))
+    {
+        logerr("luaL_loadfile `%s' err: %s\n", path, lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return -1;
+    }
+    nresult = lua_gettop(L) - level;
+    debug("* Loadfile: %s nresult: %d\n", path, nresult);
+
+    while (nresult)
+    {
+        --nresult;
+        splua_script_append(L);
+    }
+
+    lua_pop(L, 1);
+    return 0;
+}
+
+
+static int splua_scripts_stage(lua_env_t *env)
+{
+    lua_State *L;
+    script_t *s;
+    script_t  **m;
+
+    L = env->L;
+    m = malloc(sizeof(void *) * 3 * (env->scripts_n + 1));
+    memset(m, 0, sizeof(void *) * 3 * (env->scripts_n + 1));
+
+    env->scripts_iter = m;
+    env->scripts_map = m + env->scripts_n;
+    env->scripts_reduce = m + env->scripts_n * 2;
+
+    s = env->scripts;
+
+    while (s)
+    {
+        lua_getglobal(L, "scripts");
+        lua_getfield(L, -1, s->name);
+
+        lua_getfield(L, -1, "read");
+        if (lua_isfunction(L, -1))
+        {
+            if (env->scripts_read)
+            {
+                logerr("`read' function should just one!\n");
+                return -1;
+            }
+            env->scripts_read = s;
+        }
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "filter");
+        if (lua_isfunction(L, -1))
+        {
+            if (env->scripts_filter)
+            {
+                logerr("`filter' function should just one!.");
+                return -1;
+            }
+            env->scripts_filter = s;
+        }
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "iter");
+        if (lua_isfunction(L, -1))
+        {
+            *env->scripts_iter = s;
+            ++env->scripts_iter;
+        }
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "map");
+        if (lua_isfunction(L, -1))
+        {
+            *env->scripts_map = s;
+            ++env->scripts_map;
+        }
+        lua_pop(L, 1);
+
+        lua_getfield(L, -1, "reduce");
+        if (lua_isfunction(L, -1))
+        {
+            *env->scripts_reduce = s;
+            ++env->scripts_reduce;
+        }
+        lua_pop(L, 1);
+
+        s = s->next;
+    }
+    lua_settop(L, 0);
+
+
+    {
+        int t;
+        loginfo("* Stage: ");
+        if (env->scripts_read) loginfo("read -> ");
+        if (env->scripts_filter) loginfo("filter -> ");
+
+        t = env->scripts_iter - m;
+        if (t) loginfo("iter(%d) -> ", t);
+
+        t = env->scripts_map - m - env->scripts_n;
+        if (t) loginfo("map(%d) -> ", t);
+
+        t = env->scripts_reduce - m - env->scripts_n * 2;
+        if (t) loginfo("reduce(%d)", t);
+
+        loginfo("\n");
+    }
+
+    env->scripts_iter = m;
+    env->scripts_map = m + env->scripts_n;
+    env->scripts_reduce = m + env->scripts_n * 2;
+    debug("* script: %d iter: %p map: %p reduce: %p\n",
+            env->scripts_n,
+            env->scripts_iter,
+            env->scripts_map,
+            env->scripts_reduce);
+    return 0;
+}
+
+
+static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
+{
+    DIR * dir;
+    struct dirent * ptr;
+    int i = 0;
+    char path[1024];
+    script_t *head = NULL;
+    script_t **pos;
+    script_t **ppos;
+    script_t *t;
+
+    if (!dirpath) return 0;
+
+    pos = &head;
+
+    dir = opendir(dirpath);
+    if (dir <= 0)
+    {
+        logerr("opendir fail: %s\n", dirpath);
+        return -1;
+    }
+
+    while((ptr = readdir(dir)) != NULL)
+    {
+        if (DT_REG != ptr->d_type) continue;
+        if (strlen(ptr->d_name) < 5) continue;
+        if (strcmp(ptr->d_name + strlen(ptr->d_name) - 4, ".lua")) continue;
+        if (ptr->d_name[0] == '.') continue;
+
+        if (strlen(dirpath) + strlen(ptr->d_name) + 10 > sizeof(path))
+        {
+            logerr("path to %s is too long. Not Load.", ptr->d_name);
+            continue;
+        }
+        strcpy(path, dirpath);
+        *(path + strlen(dirpath)) = '/';
+        strcpy(path + strlen(dirpath) + 1, ptr->d_name);
+
+        if (splua_script(&pos, L, path, &i))
+            return -1;
+    }
+    closedir(dir);
+
+    pos = &head;
+
+    while (*pos)
+    {
+        ppos = &(*pos)->next;
+        while(*ppos)
+        {
+            if ((*pos)->order > (*ppos)->order)
+            {
+                t = (*pos)->next;
+                (*pos)->next = (*ppos)->next;
+                (*ppos)->next = t;
+
+                t = *ppos;
+                *ppos = *pos;
+                *pos = t;
+            }
+            ppos = &(*ppos)->next;
+        }
+        pos = &(*pos)->next;
+    }
+
+
+    return splua_scripts_stage(env);
+}
 
 
 static int record_lua_drop(lua_State *L)
@@ -53,7 +301,7 @@ static int record_lua_keys(lua_State *L)
         return luaL_error(L, "no request object found");
     }
 
-        lua_newtable(L);
+    lua_newtable(L);
 
     record = spt->current;
     item = record->vars;
@@ -359,6 +607,35 @@ static void splua_init_set_pattern(lua_State *L)
 }
 
 
+static int splua_init_script_append(lua_State *L)
+{
+    splua_script_append(L);
+    return 0;
+}
+
+static int splua_init_script_new(lua_State *L)
+{
+    lua_newtable(L);
+    splua_script_append(L);
+    return 0;
+}
+
+
+static void splua_init_script(lua_State *L)
+{
+    // create sp.record
+    lua_newtable(L);
+
+    lua_pushcfunction(L, splua_init_script_append);
+    lua_setfield(L, -2, "append");
+
+    //lua_pushcfunction(L, splua_init_script_new);
+    //lua_setfield(L, -2, "new");
+
+    lua_setglobal(L, "scripts");
+}
+
+
 static void splua_init_set_record(lua_State *L)
 {
     // create sp.record
@@ -395,236 +672,7 @@ static void splua_init_set_record(lua_State *L)
     lua_settop(L, 0);
 }
 
-static int splua_script(script_t ***pos, lua_State *L, const char *path, int *index)
-{
-    int level;
-    int nresult;
-    script_t *script;
 
-    lua_getglobal(L, "scripts");
-    level = lua_gettop(L);
-    if (luaL_dofile(L, path))
-    {
-        logerr("luaL_loadfile `%s' err: %s\n", path, lua_tostring(L, -1));
-        lua_pop(L, 1);
-        return -1;
-    }
-    nresult = lua_gettop(L) - level;
-    debug("* Loadfile: %s nresult: %d\n", path, nresult);
-
-    if (nresult < 1) {
-        logwrn("* %s no return table.\n");
-    }
-
-    while (nresult)
-    {
-        --nresult;
-
-        if (!lua_istable(L, -1))
-        {
-            lua_pop(L, 1);
-            continue;
-        }
-
-        script = malloc(sizeof(*script));
-        memset(script, 0, sizeof(*script));
-
-        **pos = script;
-        *pos = &script->next;
-
-
-        lua_getfield(L, -1, "_order");
-        if (lua_isnumber(L, -1))
-            script->order = lua_tonumber(L, -1);
-        lua_pop(L, 1);
-
-
-        sprintf(script->name, "script_mode_%d", ++*index);
-        lua_setfield(L, -2 - nresult, script->name);
-
-        debug("* Append Mod: %s\n", script->name);
-    }
-
-    lua_pop(L, 1);
-    return 0;
-}
-
-
-
-
-
-static int splua_scripts_stage(lua_env_t *env)
-{
-    lua_State *L;
-    script_t *s;
-    script_t  **m;
-
-    L = env->L;
-    m = malloc(sizeof(void *) * 3 * env->scripts_n);
-    memset(m, 0, sizeof(void *) * 3 * env->scripts_n);
-
-    env->scripts_iter = m;
-    env->scripts_map = m + env->scripts_n;
-    env->scripts_reduce = m + env->scripts_n * 2;
-
-    s = env->scripts;
-
-    while (s)
-    {
-        lua_getglobal(L, "scripts");
-        lua_getfield(L, -1, s->name);
-
-        lua_getfield(L, -1, "read");
-        if (lua_isfunction(L, -1))
-        {
-            if (env->scripts_read)
-            {
-                logerr("`read' function should just one!\n");
-                return -1;
-            }
-            env->scripts_read = s;
-        }
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "filter");
-        if (lua_isfunction(L, -1))
-        {
-            if (env->scripts_filter)
-            {
-                logerr("`filter' function should just one!.");
-                return -1;
-            }
-            env->scripts_filter = s;
-        }
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "iter");
-        if (lua_isfunction(L, -1))
-        {
-            *env->scripts_iter = s;
-            ++env->scripts_iter;
-        }
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "map");
-        if (lua_isfunction(L, -1))
-        {
-            *env->scripts_map = s;
-            ++env->scripts_map;
-        }
-        lua_pop(L, 1);
-
-        lua_getfield(L, -1, "reduce");
-        if (lua_isfunction(L, -1))
-        {
-            *env->scripts_reduce = s;
-            ++env->scripts_reduce;
-        }
-        lua_pop(L, 1);
-
-        s = s->next;
-    }
-    lua_settop(L, 0);
-
-
-    {
-        int t;
-        loginfo("* Stage: ");
-        if (env->scripts_read) loginfo("read -> ");
-        if (env->scripts_filter) loginfo("filter -> ");
-
-        t = env->scripts_iter - m;
-        if (t) loginfo("iter(%d) -> ", t);
-
-        t = env->scripts_map - m - env->scripts_n;
-        if (t) loginfo("map(%d) -> ", t);
-
-        t = env->scripts_reduce - m - env->scripts_n * 2;
-        if (t) loginfo("reduce(%d)", t);
-
-        loginfo("\n");
-    }
-
-    env->scripts_iter = m;
-    env->scripts_map = m + env->scripts_n;
-    env->scripts_reduce = m + env->scripts_n * 2;
-    return 0;
-}
-
-
-static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
-{
-    DIR * dir;
-    struct dirent * ptr;
-    int i = 0;
-    char path[1024];
-    script_t *head = NULL;
-    script_t **pos;
-    script_t **ppos;
-    script_t *t;
-
-    if (!dirpath) return 0;
-
-    pos = &head;
-
-    lua_newtable(L);    /* sp.vars */
-    lua_setglobal(L, "scripts");
-
-    dir = opendir(dirpath);
-    if (dir <= 0)
-    {
-        logerr("opendir fail: %s\n", dirpath);
-        return -1;
-    }
-
-    while((ptr = readdir(dir)) != NULL)
-    {
-        if (DT_REG != ptr->d_type) continue;
-        if (strlen(ptr->d_name) < 5) continue;
-        if (strcmp(ptr->d_name + strlen(ptr->d_name) - 4, ".lua")) continue;
-        if (ptr->d_name[0] == '.') continue;
-
-        if (strlen(dirpath) + strlen(ptr->d_name) + 10 > sizeof(path))
-        {
-            logerr("path to %s is too long. Not Load.", ptr->d_name);
-            continue;
-        }
-        strcpy(path, dirpath);
-        *(path + strlen(dirpath)) = '/';
-        strcpy(path + strlen(dirpath) + 1, ptr->d_name);
-
-        if (splua_script(&pos, L, path, &i))
-            return -1;
-    }
-    closedir(dir);
-
-    pos = &head;
-
-    while (*pos)
-    {
-        ppos = &(*pos)->next;
-        while(*ppos)
-        {
-            if ((*pos)->order > (*ppos)->order)
-            {
-                t = (*pos)->next;
-                (*pos)->next = (*ppos)->next;
-                (*ppos)->next = t;
-
-                t = *ppos;
-                *ppos = *pos;
-                *pos = t;
-            }
-            ppos = &(*ppos)->next;
-        }
-        pos = &(*pos)->next;
-    }
-
-    env->scripts = head;
-    env->scripts_n = i;
-
-    return splua_scripts_stage(env);
-}
 
 
 #include <execinfo.h>
@@ -680,18 +728,23 @@ int splua_init(struct spectrum *sp, void *data, lua_env_t *env)
     memset(env, 0, sizeof(*env));
 
     L = luaL_newstate();
+    lua_atpanic(L, splua_panic);
+
     luaL_openlibs(L);
 
     lua_pushlightuserdata(L, data);
-    lua_setglobal(L, "__sp_data");
+    lua_setglobal(L, SP_DATA);
+
+    lua_pushlightuserdata(L, env);
+    lua_setglobal(L, SP_ENV);
 
 
     splua_init_set_sp(L);
     splua_init_set_pattern(L);
     splua_init_set_record(L);
+    splua_init_script(L);
 
 //    splua_set_path(sp, L);
-    lua_atpanic(L, splua_panic);
 
     env->L = L;
     res = splua_scripts(env, sp->file_rc, L);
@@ -762,6 +815,7 @@ fail:
     }
     return 0;
 }
+
 
 int _splua_pcall(const char * stack, lua_State *L, int nargs, int nresult)
 {

@@ -182,7 +182,10 @@ static int spectrum_pthread_create(struct spectrum *sp, void *handle)
         spt = sp->threads + i;
 
         if (spt->lua_env.L)
+        {
+            lua_settop(spt->lua_env.L, 0);
             lua_close(spt->lua_env.L);
+        }
 
         if (splua_init(sp, spt, &spt->lua_env))
             return -1;

@@ -6,11 +6,91 @@ local _M = {}
 
 local mt = { __index = _M }
 
+local function reduce_show(opt, scatter, ...)
+    if opt.msg then
+        print(opt.msg)
+    end
 
-function _M.new(self, iter, min, max)
-    min = min or 0
-    return setmetatable({iter = iter, min = min, max=max,
-                  scatter = {}, _max = 0, _total = 0, _remain = 0}, mt)
+    local scatters = {...}
+
+    local total = scatter.total
+    local remain = scatter.remain
+    local iter = scatter.iter
+    local max = scatter.max
+
+    for _, s in ipairs(scatters) do
+        for k, v in pairs(s.scatter) do
+            if nil == scatter.scatter[k] then
+                scatter.scatter[k] = v
+            else
+                scatter.scatter[k] = v + scatter.scatter[k]
+            end
+            if max > s.max then
+                max = s.max
+            end
+        end
+        total = s.total + total
+        remain = s.remain + remain
+    end
+
+    scatter = scatter.scatter
+
+     local s, e
+     for i=1, max do
+         if nil ~= scatter[i] then
+            s = iter * (i - 1)
+            e = iter * i
+            if opt.fmt then
+                 s = opt.fmt(s)
+                 e = opt.fmt(e)
+            end
+
+	    print(s, '-', e, ':',
+              string.format("%7.2f%%", scatter[i] * 100 / total),
+              scatter[i]
+              )
+         end
+     end
+     print("Total: ", total, "Remain: ", remain)
+
+end
+
+
+function _M.new(opt)
+    local t = {}
+    local script = {}
+
+    if type(opt.field) ~= 'function' then
+        return nil, 'opt.field must be function'
+    end
+
+
+    t.scatter = {}
+    t.iter    = opt.iter  or  0
+    t.min     = opt.min   or  0
+    t.max     = opt.max
+    t._max    = 0
+    t._total  = 0
+    t._remain = 0
+    t.msg     = opt.msg
+
+    t = setmetatable(t, mt)
+
+
+    script.iter = function()
+        t:update(opt.field())
+    end
+
+
+    script.map = function()
+        return t:map()
+    end
+
+    script.reduce = function(...)
+        reduce_show(opt, ...)
+    end
+
+    scripts.append(script)
 end
 
 
@@ -44,55 +124,6 @@ function _M.map(self)
           remain = self._remain, max = self._max}
 end
 
-function _M.print(handle, scatter, ...)
-    local scatters = {...}
-
-    local total = scatter.total
-    local remain = scatter.remain
-    local iter = scatter.iter
-    local max = scatter.max
-
-    for _, s in ipairs(scatters) do
-        for k, v in pairs(s.scatter) do
-            if nil == scatter.scatter[k] then
-                scatter.scatter[k] = v
-            else
-                scatter.scatter[k] = v + scatter.scatter[k]
-            end
-            if max > s.max then
-                max = s.max
-            end
-        end
-        total = s.total + total
-        remain = s.remain + remain
-    end
-
-    scatter = scatter.scatter
-
-
-
-
-
-
-     local s, e
-     for i=1, max do
-         if nil ~= scatter[i] then
-            s = iter * (i - 1)
-            e = iter * i
-            if handle then
-                 s = handle(s)
-                 e = handle(e)
-            end
-
-	    print(s, '-', e, ':',
-              string.format("%7.2f%%", scatter[i] * 100 / total),
-              scatter[i]
-              )
-         end
-     end
-     print("Total: ", total, "Remain: ", remain)
-
-end
 
 
 return _M

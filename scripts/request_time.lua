@@ -1,34 +1,26 @@
 local scatter = require "modules/scatter"
-local monip = require "monip"
+--local monip = require "monip"
+local utils = require "modules/utils"
 
 
 
-local scatter_request_time = scatter:new(50, 0, 1000)
+local opt = {
+    iter = 2048 * 2,
+    min = 0,
+    max = 1000,
+    msg = "request_time scatter",
+    fmt = utils.number_fmt,
+}
 
-
-local _M = {}
-
-function _M.iter()
+opt.field = function()
    local vars = sp.record.vars
 
-   scatter_request_time:update(vars.request_time)
-end
-
-function _M.map()
-   local t = {}
-   --return {t = 2,  s = 'string', table = {t = 2, s = 'value'}}
-   return scatter_request_time:map()
-end
-
-function _M.reduce(...)
-
-    scatter.print(nil, ...)
-   --print("## Go To reduce")
-   -- local args = {...}
-   -- for k, v in pairs(args) do
-   --     print(k, v)
-   -- end
+   return vars.request_time
 end
 
 
-return _M
+scatter.new(opt)
+
+
+
+
