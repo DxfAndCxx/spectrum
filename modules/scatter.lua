@@ -7,6 +7,8 @@ local _M = {}
 local mt = { __index = _M }
 
 local function reduce_show(opt, scatter, ...)
+    print('')
+    print("**************************************************")
     if opt.msg then
         print(opt.msg)
     end
