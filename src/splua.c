@@ -74,7 +74,7 @@ static int splua_script_append(lua_State *L)
 }
 
 
-static int splua_script(script_t ***pos, lua_State *L, const char *path, int *index)
+static int splua_script(lua_State *L, const char *path)
 {
     int level, nresult;
 
@@ -93,8 +93,6 @@ static int splua_script(script_t ***pos, lua_State *L, const char *path, int *in
         --nresult;
         splua_script_append(L);
     }
-
-    lua_pop(L, 1);
     return 0;
 }
 
@@ -207,16 +205,13 @@ static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
 {
     DIR * dir;
     struct dirent * ptr;
-    int i = 0;
     char path[1024];
-    script_t *head = NULL;
-    script_t **pos;
-    script_t **ppos;
-    script_t *t;
+    //script_t **pos;
+    //script_t **ppos;
+    //script_t *t;
 
     if (!dirpath) return 0;
 
-    pos = &head;
 
     dir = opendir(dirpath);
     if (dir <= 0)
@@ -229,8 +224,8 @@ static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
     {
         if (DT_REG != ptr->d_type) continue;
         if (strlen(ptr->d_name) < 5) continue;
-        if (strcmp(ptr->d_name + strlen(ptr->d_name) - 4, ".lua")) continue;
         if (ptr->d_name[0] == '.') continue;
+        if (strcmp(ptr->d_name + strlen(ptr->d_name) - 4, ".lua")) continue;
 
         if (strlen(dirpath) + strlen(ptr->d_name) + 10 > sizeof(path))
         {
@@ -241,32 +236,32 @@ static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
         *(path + strlen(dirpath)) = '/';
         strcpy(path + strlen(dirpath) + 1, ptr->d_name);
 
-        if (splua_script(&pos, L, path, &i))
+        if (splua_script(L, path))
             return -1;
     }
     closedir(dir);
 
-    pos = &head;
+    //pos = &head;
 
-    while (*pos)
-    {
-        ppos = &(*pos)->next;
-        while(*ppos)
-        {
-            if ((*pos)->order > (*ppos)->order)
-            {
-                t = (*pos)->next;
-                (*pos)->next = (*ppos)->next;
-                (*ppos)->next = t;
+    //while (*pos)
+    //{
+    //    ppos = &(*pos)->next;
+    //    while(*ppos)
+    //    {
+    //        if ((*pos)->order > (*ppos)->order)
+    //        {
+    //            t = (*pos)->next;
+    //            (*pos)->next = (*ppos)->next;
+    //            (*ppos)->next = t;
 
-                t = *ppos;
-                *ppos = *pos;
-                *pos = t;
-            }
-            ppos = &(*ppos)->next;
-        }
-        pos = &(*pos)->next;
-    }
+    //            t = *ppos;
+    //            *ppos = *pos;
+    //            *pos = t;
+    //        }
+    //        ppos = &(*ppos)->next;
+    //    }
+    //    pos = &(*pos)->next;
+    //}
 
 
     return splua_scripts_stage(env);
