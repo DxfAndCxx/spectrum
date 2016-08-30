@@ -20,7 +20,7 @@ target=spectrum
 sws=sws/libsws.a
 
 
-all:$(objects) $(lua) $(sws) $(jansson) $(lua_cjson) $(PREFIX)
+all: $(PREFIX) $(objects) $(lua) $(sws) $(jansson) $(lua_cjson)
 	gcc  $(objects) -o $(target) $(sws)  $(LDFLAGS)
 
 $(sws):
