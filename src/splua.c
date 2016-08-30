@@ -102,14 +102,15 @@ static int splua_scripts_stage(lua_env_t *env)
     lua_State *L;
     script_t *s;
     script_t  **m;
+    int size = env->scripts_n + 1;
 
     L = env->L;
-    m = malloc(sizeof(void *) * 3 * (env->scripts_n + 1));
-    memset(m, 0, sizeof(void *) * 3 * (env->scripts_n + 1));
+    m = malloc(sizeof(void *) * 3 * size);
+    memset(m, 0, sizeof(void *) * 3 * size);
 
     env->scripts_iter = m;
-    env->scripts_map = m + env->scripts_n;
-    env->scripts_reduce = m + env->scripts_n * 2;
+    env->scripts_map = m + size;
+    env->scripts_reduce = m + size * 2;
 
     s = env->scripts;
 
@@ -180,18 +181,18 @@ static int splua_scripts_stage(lua_env_t *env)
         t = env->scripts_iter - m;
         if (t) loginfo("iter(%d) -> ", t);
 
-        t = env->scripts_map - m - env->scripts_n;
+        t = env->scripts_map - m - size;
         if (t) loginfo("map(%d) -> ", t);
 
-        t = env->scripts_reduce - m - env->scripts_n * 2;
+        t = env->scripts_reduce - m - size * 2;
         if (t) loginfo("reduce(%d)", t);
 
         loginfo("\n");
     }
 
     env->scripts_iter = m;
-    env->scripts_map = m + env->scripts_n;
-    env->scripts_reduce = m + env->scripts_n * 2;
+    env->scripts_map = m + size;
+    env->scripts_reduce = m + size * 2;
     debug("* script: %d iter: %p map: %p reduce: %p\n",
             env->scripts_n,
             env->scripts_iter,
