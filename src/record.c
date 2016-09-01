@@ -321,7 +321,7 @@ void *record_iter(void *_)
             }
         }
 
-        script = spt->lua_env.scripts_map;
+        script = spt->lua_env.scripts_iter;
         while (*script)
         {
             lua_getfield(L, -1, (*script)->name);
