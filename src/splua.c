@@ -241,6 +241,7 @@ static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
             return -1;
     }
     closedir(dir);
+    return 0;
 
     //pos = &head;
 
@@ -265,7 +266,6 @@ static int splua_scripts(lua_env_t *env, const char *dirpath, lua_State *L)
     //}
 
 
-    return splua_scripts_stage(env);
 }
 
 
@@ -745,6 +745,8 @@ int splua_init(struct spectrum *sp, void *data, lua_env_t *env)
     env->L = L;
     res = splua_scripts(env, sp->file_rc, L);
     lua_settop(L, 0);
+    if (0 == res)
+        res = splua_scripts_stage(env);
 
     return res;
 }

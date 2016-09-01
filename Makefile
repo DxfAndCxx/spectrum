@@ -29,6 +29,9 @@ $(sws):
 $(PREFIX):
 	make -C deps
 
+install:
+	cp $(target) /usr/local/bin
+
 
 
 clean:
