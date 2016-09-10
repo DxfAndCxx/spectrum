@@ -46,8 +46,6 @@ static int splua_script_append(lua_State *L)
     lua_pop(L, 1);
 
 
-    sprintf(script->name, "%p", (void *)script);
-
     lua_getglobal(L, "scripts");
     lua_pushvalue(L, -2);
     lua_setfield(L, -2, script->name);
@@ -314,8 +312,74 @@ static int record_lua_keys(lua_State *L)
 }
 
 
+static int record_lua_var_set(lua_State *L) // sp.record.vars set
+{
+    record_t *record;
+    struct item *item;
+    struct sp_thread *spt;
+    string_t s;
+    int value_type;
+    const char *msg;
+    spt = splua_get_data(L);
 
-static int record_lua_var_get(lua_State *L)
+    if (NULL == spt) {
+        return luaL_error(L, "no request object found");
+    }
+    record = spt->current;
+
+    s.s = (char *)lua_tolstring(L, -2, &s.l);
+    value_type = lua_type(L, -1);
+
+    item = record_vars_get(record, &s);
+    if (item)
+    {
+        switch(value_type)
+        {
+            case LUA_TSTRING:
+                item->type = VAR_TYPE_STR;
+                sp_lua_tolstring(L, -1, &item->v.s);
+                return 0;
+
+            case LUA_TNUMBER:
+                item->type = VAR_TYPE_NUM;
+                item->v.n.n =  lua_tonumber(L, -1);
+                return 0;
+
+            default:
+                return 0;
+        }
+    }
+    // now append new value
+
+
+    switch (value_type) {
+        case LUA_TNUMBER:
+            item = record_vars_append(record, VAR_TYPE_NUM, 0);
+            sp_lua_tolstring(L, -2, &item->name);
+            item->v.n.n =  lua_tonumber(L, -1);
+            break;
+
+        case LUA_TSTRING:
+            item = record_vars_append(record, VAR_TYPE_STR, 0);
+            sp_lua_tolstring(L, -2, &item->name);
+            sp_lua_tolstring(L, -1, &item->v.s);
+            break;
+
+        case LUA_TNIL:
+            /* undef the variable */
+            return 0;
+
+        default:
+            msg = lua_pushfstring(L, "string, number, or nil expected, "
+                    "but got %s", lua_typename(L, value_type));
+            return luaL_argerror(L, 1, msg);
+    }
+
+    return 0;
+}
+
+
+static int record_lua_var_get(lua_State *L) // sp.record.vars get
 {
     record_t *record;
     struct item *item;
@@ -349,7 +413,8 @@ static int record_lua_var_get(lua_State *L)
     }
 }
 
-static int record_lua_append(lua_State *L)
+
+static int record_lua_append(lua_State *L) // sp.record.vars.append
 {
     record_t *record;
     struct item *item;
@@ -655,11 +720,13 @@ static void splua_init_set_record(lua_State *L)
     // create sp.record.vars
     lua_newtable(L);    /* sp.record.vars */
 
-    lua_createtable(L, 0, 2 /* nrec */); /* metatable for .var */
+    lua_createtable(L, 0, 3 /* nrec */); /* metatable for .var */
 
     lua_pushcfunction(L, record_lua_var_get);
     lua_setfield(L, -2, "__index");
 
+    lua_pushcfunction(L, record_lua_var_set);
+    lua_setfield(L, -2, "__newindex");
 
     lua_setmetatable(L, -2);
 
