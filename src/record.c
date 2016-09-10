@@ -296,6 +296,7 @@ void *record_iter(void *_)
     record_t *record;
     lua_State *L;
     script_t **script;
+    int drop;
 
     spt = _;
     record = spt->record;
@@ -312,11 +313,13 @@ void *record_iter(void *_)
         {
             lua_getfield(L, -1, spt->lua_env.scripts_filter->name);
             lua_getfield(L, -1, "filter");
-            splua_pcall(L, 0, 0);
-            lua_pop(L, 1);
-            if (spt->flag_drop)
-            {
-                spt->flag_drop = 0;
+            splua_pcall(L, 0, 1);
+            drop = 0;
+            if (lua_isnil(L, -1))
+                drop = 1;
+
+            lua_pop(L, 2);
+            if (drop) {
                 goto next;
                 continue;
             }
