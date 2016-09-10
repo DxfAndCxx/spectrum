@@ -12,6 +12,7 @@ local function reduce_show(opt, scatter, ...)
     if opt.msg then
         print(opt.msg)
     end
+    opt.limit = opt.limit or 0
 
     local scatters = {...}
 
@@ -46,11 +47,13 @@ local function reduce_show(opt, scatter, ...)
                  s = opt.fmt(s)
                  e = opt.fmt(e)
             end
+            local p = scatter[i] * 100 / total
+            if p > opt.limit then
 
-	    print(s, '-', e, ':',
-              string.format("%7.2f%%", scatter[i] * 100 / total),
+	    print(s, '-', e, ':', string.format("%7.2f%%", p),
               scatter[i]
               )
+            end
          end
      end
      print("Total: ", total, "Remain: ", remain)
@@ -80,7 +83,9 @@ function _M.new(opt)
 
 
     script.iter = function()
-        t:update(opt.field())
+        local v = opt.field()
+        if nil == v then return end
+        t:update(v)
     end
 
 

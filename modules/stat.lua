@@ -81,7 +81,9 @@ function _M.new(opt)
 
     if opt.field then
         script.iter = function()
-            t:update(opt.field())
+           local v = opt.field()
+           if nil == v then return end
+            t:update(v)
         end
     end
 
