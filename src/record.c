@@ -328,7 +328,6 @@ void *record_iter(void *_)
         script = spt->lua_env.scripts_iter;
         while (*script)
         {
-            printf("scirpt : %p\n", script);
             lua_getfield(L, -1, (*script)->name);
             lua_getfield(L, -1, "iter");
             splua_pcall(L, 0, 0);

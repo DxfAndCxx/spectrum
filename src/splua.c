@@ -45,6 +45,7 @@ static int splua_script_append(lua_State *L)
         script->order = lua_tonumber(L, -1);
     lua_pop(L, 1);
 
+    sprintf(script->name, "%p", (void *)script);
 
     lua_getglobal(L, "scripts");
     lua_pushvalue(L, -2);
