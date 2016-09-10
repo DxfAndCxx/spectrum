@@ -317,6 +317,7 @@ void *record_iter(void *_)
             if (spt->flag_drop)
             {
                 spt->flag_drop = 0;
+                goto next;
                 continue;
             }
         }
@@ -331,6 +332,7 @@ void *record_iter(void *_)
             ++script;
         }
 
+next:
         record = record->next;
     }
 
